@@ -119,7 +119,7 @@ def test_parent_child_pipeline_relationships(temp_session: Session):
         target_population="Adults with Type 2 Diabetes",
         intervention="HbA1c target",
         confidence=0.92,
-        extraction_model_version="grok-4.7",
+        extraction_model_version="openai/gpt-oss-20b",
         extraction_prompt_version="1.0",
     )
     temp_session.add(change)

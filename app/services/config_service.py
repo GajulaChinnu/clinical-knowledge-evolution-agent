@@ -17,7 +17,7 @@ class ConfigError(Exception):
 
 
 class MissingAPIKeyError(ConfigError):
-    """Raised when XAI_API_KEY is required but not configured."""
+    """Raised when GROQ_API_KEY is required but not configured."""
     pass
 
 
@@ -26,9 +26,10 @@ class AppConfig(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
-    # API Configuration
-    xai_api_key: Optional[str] = Field(default=None, repr=False)
-    xai_model: str = Field(default="grok-4.7")
+    # API Configuration (Groq)
+    groq_api_key: Optional[str] = Field(default=None, repr=False)
+    groq_model: str = Field(default="openai/gpt-oss-20b")
+    groq_base_url: str = Field(default="https://api.groq.com/openai/v1")
 
     # Storage & Database
     database_url: str = Field(default="sqlite:///./data/ckea.db")
@@ -52,18 +53,18 @@ class AppConfig(BaseModel):
     @property
     def has_api_key(self) -> bool:
         """Check whether a non-empty API key is configured."""
-        return bool(self.xai_api_key and self.xai_api_key.strip())
+        return bool(self.groq_api_key and self.groq_api_key.strip())
 
     def get_api_key(self) -> str:
         """Return the API key or raise MissingAPIKeyError without leaking details."""
         if not self.has_api_key:
-            raise MissingAPIKeyError("XAI_API_KEY is not set or empty. Please configure it in .env or environment.")
-        return self.xai_api_key  # type: ignore
+            raise MissingAPIKeyError("GROQ_API_KEY is not set or empty. Please configure it in .env or environment.")
+        return self.groq_api_key  # type: ignore
 
     def __repr__(self) -> str:
         fields = []
         for k, v in self.__dict__.items():
-            if k == "xai_api_key":
+            if k == "groq_api_key":
                 val = "'[REDACTED]'" if v else "None"
             else:
                 val = repr(v)
@@ -76,13 +77,14 @@ class AppConfig(BaseModel):
     def to_safe_dict(self) -> Dict[str, Any]:
         """Return a dictionary representation with sensitive credentials masked."""
         data = self.model_dump()
-        data["xai_api_key"] = "[REDACTED]" if self.has_api_key else None
+        data["groq_api_key"] = "[REDACTED]" if self.has_api_key else None
         return data
 
 
 _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
-    "XAI_API_KEY": ("xai_api_key", lambda x: x.strip() if x and x.strip() else None),
-    "XAI_MODEL": ("xai_model", str),
+    "GROQ_API_KEY": ("groq_api_key", lambda x: x.strip() if x and x.strip() else None),
+    "GROQ_MODEL": ("groq_model", str),
+    "GROQ_BASE_URL": ("groq_base_url", str),
     "DATABASE_URL": ("database_url", str),
     "SOURCE_DIR": ("source_dir", Path),
     "PROTOCOL_DIR": ("protocol_dir", Path),

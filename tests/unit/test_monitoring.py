@@ -39,7 +39,7 @@ def temp_env(tmp_path: Path):
     config = AppConfig(
         source_dir=source_dir,
         database_url=f"sqlite:///{db_path}",
-        xai_api_key="secret-key-do-not-log-12345",
+        groq_api_key="secret-key-do-not-log-12345",
     )
 
     agent = MonitoringAgent(
@@ -259,7 +259,7 @@ def test_sensitive_configuration_not_logged(temp_env, caplog):
     """Test 11: Verify sensitive credentials (API keys) are never logged."""
     source_dir = temp_env["source_dir"]
     agent = temp_env["agent"]
-    secret_key = temp_env["config"].xai_api_key
+    secret_key = temp_env["config"].groq_api_key
 
     create_sample_pdf(source_dir / "sensitive_test.pdf", pages=1)
 

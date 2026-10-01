@@ -254,7 +254,7 @@ Use the approved stack:
 
 \- pytest
 
-\- xAI Grok Responses API
+\- Groq API
 
 
 
@@ -263,6 +263,10 @@ Use the approved stack:
 
 
 \## LLM Usage
+
+
+
+LLM provider: Groq API
 
 
 

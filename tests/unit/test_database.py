@@ -73,7 +73,7 @@ def test_foreign_key_enforcement(temp_db_engine):
                 target_population="Adults with Type 2 Diabetes",
                 intervention="Metformin",
                 confidence=0.95,
-                extraction_model_version="grok-4.7",
+                extraction_model_version="openai/gpt-oss-20b",
                 extraction_prompt_version="1.0",
                 status="extracted",
             )

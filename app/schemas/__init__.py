@@ -20,6 +20,10 @@ from app.schemas.changes import (
     ChangeRecordRead,
     ChangeStatus,
 )
+from app.schemas.extraction import (
+    ExtractedRecommendation,
+    ExtractionResponse,
+)
 from app.schemas.documents import (
     DocumentStatus,
     IngestedDocumentBase,
@@ -75,6 +79,9 @@ __all__ = [
     "ChangeRecordBase",
     "ChangeRecordCreate",
     "ChangeRecordRead",
+    # Extraction
+    "ExtractedRecommendation",
+    "ExtractionResponse",
     # Gaps
     "GapStatus",
     "ComparisonResult",
