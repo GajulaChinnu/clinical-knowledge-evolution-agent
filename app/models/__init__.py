@@ -1,0 +1,1 @@
+"""CKEA database models package."""

@@ -1,0 +1,32 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.*
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local data directories
+data/chroma/
+data/output/
+
+# Application logs
+logs/
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

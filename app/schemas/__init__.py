@@ -1,0 +1,1 @@
+"""CKEA data schemas package."""

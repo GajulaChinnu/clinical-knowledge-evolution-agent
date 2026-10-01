@@ -1,0 +1,13 @@
+[project]
+name = "clinical-knowledge-evolution-agent"
+version = "0.1.0"
+description = "Clinical Knowledge Evolution Agent (CKEA) - Multi-agent clinical protocol evolution system"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+addopts = "-v"
