@@ -24,6 +24,12 @@ from app.schemas.extraction import (
     ExtractedRecommendation,
     ExtractionResponse,
 )
+from app.schemas.protocol import (
+    CandidateProtocolSection,
+    ProtocolDocument,
+    ProtocolIndexingSummary,
+    ProtocolSection,
+)
 from app.schemas.documents import (
     DocumentStatus,
     IngestedDocumentBase,
@@ -82,6 +88,11 @@ __all__ = [
     # Extraction
     "ExtractedRecommendation",
     "ExtractionResponse",
+    # Protocols
+    "ProtocolSection",
+    "ProtocolDocument",
+    "CandidateProtocolSection",
+    "ProtocolIndexingSummary",
     # Gaps
     "GapStatus",
     "ComparisonResult",

@@ -1,0 +1,27 @@
+{
+  "protocol_id": "PROT-DM-001",
+  "protocol_version": "v1.0",
+  "title": "Adult Type 2 Diabetes Glycemic Management Protocol",
+  "sections": [
+    {
+      "section_id": "SEC-1",
+      "section_heading": "Screening and Diagnostic Criteria",
+      "section_text": "Fasting plasma glucose >= 126 mg/dL or HbA1c >= 6.5% confirms diagnosis of type 2 diabetes mellitus."
+    },
+    {
+      "section_id": "SEC-2",
+      "section_heading": "First-Line Pharmacotherapy",
+      "section_text": "Metformin 500mg once daily with evening meals is the preferred initial pharmacologic agent for type 2 diabetes."
+    },
+    {
+      "section_id": "SEC-3",
+      "section_heading": "Glycemic Targets",
+      "section_text": "Target HbA1c for non-pregnant adult patients is < 7.0% to minimize microvascular and macrovascular complications."
+    },
+    {
+      "section_id": "SEC-4",
+      "section_heading": "Renal Monitoring and Dose Adjustments",
+      "section_text": "Monitor eGFR annually. Discontinue metformin if eGFR falls below 30 mL/min/1.73m2 due to lactic acidosis risk."
+    }
+  ]
+}
