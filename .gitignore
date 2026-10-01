@@ -21,6 +21,9 @@ htmlcov/
 # Local data directories
 data/chroma/
 data/output/
+*.db
+*.sqlite
+*.sqlite3
 
 # Application logs
 logs/
