@@ -38,13 +38,14 @@ class AppConfig(BaseModel):
     chroma_dir: Path = Field(default_factory=lambda: Path("./data/chroma"))
     output_dir: Path = Field(default_factory=lambda: Path("./data/output"))
     scoring_rules_path: Path = Field(default_factory=lambda: Path("./config/scoring.yaml"))
+    templates_dir: Path = Field(default_factory=lambda: Path("./templates"))
 
     # Confidence & Routing Thresholds (from AGENTS.md)
     extraction_confidence_threshold: float = Field(default=0.70)
     comparison_confidence_threshold: float = Field(default=0.70)
     protocol_similarity_threshold: float = Field(default=0.70)
 
-    @field_validator("source_dir", "protocol_dir", "chroma_dir", "output_dir", "scoring_rules_path", mode="before")
+    @field_validator("source_dir", "protocol_dir", "chroma_dir", "output_dir", "scoring_rules_path", "templates_dir", mode="before")
     @classmethod
     def _coerce_path(cls, v: Any) -> Path:
         if isinstance(v, Path):
@@ -92,6 +93,7 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "CHROMA_DIR": ("chroma_dir", Path),
     "OUTPUT_DIR": ("output_dir", Path),
     "SCORING_RULES_PATH": ("scoring_rules_path", Path),
+    "TEMPLATES_DIR": ("templates_dir", Path),
     "EXTRACTION_CONFIDENCE_THRESHOLD": ("extraction_confidence_threshold", float),
     "COMPARISON_CONFIDENCE_THRESHOLD": ("comparison_confidence_threshold", float),
     "PROTOCOL_SIMILARITY_THRESHOLD": ("protocol_similarity_threshold", float),

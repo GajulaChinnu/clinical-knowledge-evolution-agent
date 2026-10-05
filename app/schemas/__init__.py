@@ -9,10 +9,14 @@ from app.schemas.audit import (
     NotificationRead,
 )
 from app.schemas.briefs import (
+    BriefCompletenessError,
     BriefStatus,
     ChangeBriefBase,
     ChangeBriefCreate,
     ChangeBriefRead,
+    StructuredBriefPayload,
+    assert_brief_completeness,
+    validate_brief_completeness,
 )
 from app.schemas.changes import (
     ChangeRecordBase,
@@ -120,6 +124,10 @@ __all__ = [
     "ChangeBriefBase",
     "ChangeBriefCreate",
     "ChangeBriefRead",
+    "BriefCompletenessError",
+    "StructuredBriefPayload",
+    "validate_brief_completeness",
+    "assert_brief_completeness",
     # Governance
     "ReviewDecision",
     "ReviewAssignmentStatus",

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinical Change Brief — {{ brief_id }}</title>
+  <style>
+    :root {
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --tier-critical: #dc2626;
+      --tier-high: #ea580c;
+      --tier-standard: #0284c7;
+      --tier-low: #16a34a;
+      --tier-incomplete: #64748b;
+    }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      margin: 0;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+    header {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 1.5rem 2rem;
+      border-bottom: 3px solid var(--primary);
+    }
+    header h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+    .header-meta span strong {
+      color: #f1f5f9;
+    }
+    .content {
+      padding: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-critical { background: #fee2e2; color: var(--tier-critical); border: 1px solid #fecaca; }
+    .badge-high { background: #ffedd5; color: var(--tier-high); border: 1px solid #fed7aa; }
+    .badge-standard { background: #e0f2fe; color: var(--tier-standard); border: 1px solid #bae6fd; }
+    .badge-low { background: #dcfce7; color: var(--tier-low); border: 1px solid #bbf7d0; }
+    .badge-incomplete { background: #f1f5f9; color: var(--tier-incomplete); border: 1px solid #cbd5e1; }
+    .badge-neutral { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+    .banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .banner-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .banner-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    section {
+      margin-bottom: 2.25rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    section:last-of-type {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-num {
+      background: #e2e8f0;
+      color: #334155;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 0.85rem;
+    }
+
+    .quote-box {
+      background: #f1f5f9;
+      border-left: 4px solid var(--primary);
+      padding: 1rem 1.25rem;
+      border-radius: 0 4px 4px 0;
+      font-style: italic;
+      margin: 0.75rem 0;
+      color: #1e293b;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      border: 1px solid #edf2f7;
+      font-size: 0.875rem;
+      margin-top: 0.75rem;
+    }
+    .meta-item strong {
+      color: var(--text-muted);
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .score-cell {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .alert {
+      padding: 1rem 1.25rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .alert-warning {
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      color: #92400e;
+    }
+    .alert-info {
+      background: #f0fdf4;
+      border: 1px solid #dcfce7;
+      color: #166534;
+    }
+
+    ol.actions-list {
+      padding-left: 1.25rem;
+      margin: 0.75rem 0;
+    }
+    ol.actions-list li {
+      margin-bottom: 0.75rem;
+    }
+    ol.actions-list li strong {
+      color: #0f172a;
+    }
+
+    footer {
+      background: #f8fafc;
+      border-top: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clinical Change Brief</h1>
+      <div class="header-meta">
+        <span><strong>Brief ID:</strong> {{ brief_id }}</span>
+        <span><strong>Status:</strong> <span class="badge badge-neutral">{{ status|default("draft") }}</span></span>
+        <span><strong>Generated:</strong> {{ generated_at }}</span>
+        <span><strong>Schema Version:</strong> v{{ schema_version }}</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Routing / Tier Banner -->
+      <div class="banner">
+        <div>
+          <div class="banner-title">Assigned Governance Tier</div>
+          <div class="banner-value">
+            {% if impact_assessment.is_complete and impact_assessment.tier %}
+              <span class="badge badge-{{ impact_assessment.tier|lower }}">{{ impact_assessment.tier }}</span>
+              (Score: {{ impact_assessment.total_score }} / 15)
+            {% else %}
+              <span class="badge badge-incomplete">Incomplete</span>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="banner-title">Target Committee</div>
+          <div class="banner-value" style="font-size: 1rem;">
+            {{ impact_assessment.routing_target|default("Manual Governance Resolution Required") }}
+          </div>
+        </div>
+        <div>
+          <div class="banner-title">SLA Deadline</div>
+          <div class="banner-value" style="font-size: 1rem;">
+            {{ impact_assessment.sla_deadline|default("Not Assigned") }}
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 1 -->
+      <section id="section-1">
+        <h2><span class="section-num">1</span> What Changed</h2>
+        <div class="quote-box">
+          "{{ what_changed.recommendation_text }}"
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <strong>Source Document</strong>
+            {{ source_metadata.source_identifier }}
+          </div>
+          <div class="meta-item">
+            <strong>Page / Section</strong>
+            Page {{ what_changed.page|default("N/A") }}, {{ what_changed.section|default("N/A") }}
+          </div>
+          <div class="meta-item">
+            <strong>Recommendation Type</strong>
+            {{ what_changed.recommendation_type }}
+          </div>
+          <div class="meta-item">
+            <strong>Target Population</strong>
+            {{ what_changed.target_population }}
+          </div>
+          <div class="meta-item">
+            <strong>Intervention</strong>
+            {{ what_changed.intervention }}
+          </div>
+          <div class="meta-item">
+            <strong>Evidence Grade</strong>
+            {{ what_changed.evidence_grade|default("Not specified") }}
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2 -->
+      <section id="section-2">
+        <h2><span class="section-num">2</span> What Our Protocol Currently Says</h2>
+        {% if current_protocol.is_match %}
+          <div class="quote-box">
+            "{{ current_protocol.exact_protocol_text }}"
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <strong>Protocol ID</strong>
+              {{ current_protocol.protocol_id }}
+            </div>
+            <div class="meta-item">
+              <strong>Protocol Version</strong>
+              v{{ current_protocol.protocol_version }}
+            </div>
+            <div class="meta-item">
+              <strong>Section ID</strong>
+              {{ current_protocol.section_id|default("N/A") }}
+            </div>
+            <div class="meta-item">
+              <strong>Section Heading</strong>
+              {{ current_protocol.section_heading|default("N/A") }}
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-warning">
+            <strong>No Matching Protocol Section Identified:</strong>
+            {{ current_protocol.no_match_statement|default("No matching protocol section was identified in the current institutional protocol library.") }}
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <strong>Protocol Status</strong>
+              Unindexed / No Match (Requires G3 Governance Review)
+            </div>
+          </div>
+        {% endif %}
+      </section>
+
+      <!-- SECTION 3 -->
+      <section id="section-3">
+        <h2><span class="section-num">3</span> Specific Difference</h2>
+        <p style="font-size: 1.05rem; font-weight: 500; margin-bottom: 0.75rem;">
+          {{ specific_difference.specific_difference }}
+        </p>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <strong>Difference Type</strong>
+            <span class="badge badge-neutral">{{ specific_difference.difference_type }}</span>
+          </div>
+          <div class="meta-item">
+            <strong>Comparison Result</strong>
+            {{ specific_difference.comparison_result }}
+          </div>
+          <div class="meta-item">
+            <strong>Comparison Confidence</strong>
+            {% if specific_difference.comparison_confidence is not none %}
+              {{ "%.0f"|format(specific_difference.comparison_confidence * 100) }}%
+            {% else %}
+              N/A
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4 -->
+      <section id="section-4">
+        <h2><span class="section-num">4</span> Impact Assessment</h2>
+        {% if impact_assessment.is_complete %}
+          <table>
+            <thead>
+              <tr>
+                <th>Dimension</th>
+                <th>Rule ID</th>
+                <th>Score</th>
+                <th>Written Score Basis</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Clinical Urgency</strong></td>
+                <td><code>{{ impact_assessment.rule_ids.get('clinical_urgency', 'URGENCY') }}</code></td>
+                <td class="score-cell">{{ impact_assessment.clinical_urgency }} / 5</td>
+                <td>{{ impact_assessment.urgency_basis }}</td>
+              </tr>
+              <tr>
+                <td><strong>Evidence Strength</strong></td>
+                <td><code>{{ impact_assessment.rule_ids.get('evidence_strength', 'EVIDENCE') }}</code></td>
+                <td class="score-cell">{{ impact_assessment.evidence_strength }} / 5</td>
+                <td>{{ impact_assessment.evidence_basis }}</td>
+              </tr>
+              <tr>
+                <td><strong>Pathway Breadth</strong></td>
+                <td><code>{{ impact_assessment.rule_ids.get('pathway_breadth', 'BREADTH') }}</code></td>
+                <td class="score-cell">{{ impact_assessment.pathway_breadth }} / 5</td>
+                <td>{{ impact_assessment.breadth_basis }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr style="background: #f8fafc; font-weight: 700;">
+                <td colspan="2">Total Impact Score</td>
+                <td class="score-cell">{{ impact_assessment.total_score }} / 15</td>
+                <td>
+                  Tier: <span class="badge badge-{{ impact_assessment.tier|lower }}">{{ impact_assessment.tier }}</span>
+                  | Rules: v{{ impact_assessment.scoring_yaml_version }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        {% else %}
+          <div class="alert alert-warning">
+            <strong>Impact Assessment Incomplete:</strong>
+            {{ impact_assessment.incomplete_reason|default("Missing or unmapped dimension values prevent deterministic scoring. No tier or SLA has been assigned.") }}
+          </div>
+        {% endif %}
+      </section>
+
+      <!-- SECTION 5 -->
+      <section id="section-5">
+        <h2><span class="section-num">5</span> Affected Workflows</h2>
+        {% if affected_workflows.is_available and affected_workflows.affected_workflows %}
+          <p>{{ affected_workflows.workflow_summary|default("The following clinical workflows and care pathways are affected by this recommendation:") }}</p>
+          <ul>
+            {% for wf in affected_workflows.affected_workflows %}
+              <li>{{ wf }}</li>
+            {% endfor %}
+          </ul>
+        {% elif affected_workflows.is_available and affected_workflows.workflow_summary %}
+          <p>{{ affected_workflows.workflow_summary }}</p>
+        {% else %}
+          <p style="color: var(--text-muted); font-style: italic;">
+            {{ affected_workflows.unavailability_reason|default("Workflow information unavailable in source metadata.") }}
+          </p>
+        {% endif %}
+      </section>
+
+      <!-- SECTION 6 -->
+      <section id="section-6">
+        <h2><span class="section-num">6</span> Proposed Review Actions</h2>
+        <div class="alert alert-info" style="margin-bottom: 1rem;">
+          <strong>Governance Notice:</strong> These are proposed review actions for clinical governance. They are NOT decisions. The system does not automatically approve or reject protocol modifications.
+        </div>
+        <ol class="actions-list">
+          {% for action in proposed_actions %}
+            <li>
+              <strong>{{ action.step }}. {{ action.action }}</strong>
+              <div style="color: var(--text-muted); font-size: 0.9rem;">{{ action.description }}</div>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <!-- SECTION 7 -->
+      <section id="section-7">
+        <h2><span class="section-num">7</span> Source Excerpt</h2>
+        <div class="quote-box" style="font-style: normal; line-height: 1.7;">
+          {{ source_excerpt.source_excerpt }}
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+          Verified excerpt from <strong>{{ source_excerpt.source_identifier }}</strong> (Page {{ source_excerpt.page|default("N/A") }}, Section: {{ source_excerpt.section|default("N/A") }})
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <span>CKEA Clinical Knowledge Evolution Agent — Deterministic Briefing Engine</span>
+      <span>Impact ID: {{ impact_record_id }}</span>
+      <span>Gap ID: {{ gap_record_id }}</span>
+    </footer>
+  </div>
+</body>
+</html>
