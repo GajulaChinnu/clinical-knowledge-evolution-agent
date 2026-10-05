@@ -45,6 +45,11 @@ class AppConfig(BaseModel):
     comparison_confidence_threshold: float = Field(default=0.70)
     protocol_similarity_threshold: float = Field(default=0.70)
 
+    # SLA Scheduler Configuration (Phase 11)
+    sla_scheduler_enabled: bool = Field(default=False)
+    sla_check_interval_minutes: int = Field(default=60, ge=1)
+    sla_timezone: str = Field(default="UTC")
+
     @field_validator("source_dir", "protocol_dir", "chroma_dir", "output_dir", "scoring_rules_path", "templates_dir", mode="before")
     @classmethod
     def _coerce_path(cls, v: Any) -> Path:
@@ -97,6 +102,9 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "EXTRACTION_CONFIDENCE_THRESHOLD": ("extraction_confidence_threshold", float),
     "COMPARISON_CONFIDENCE_THRESHOLD": ("comparison_confidence_threshold", float),
     "PROTOCOL_SIMILARITY_THRESHOLD": ("protocol_similarity_threshold", float),
+    "SLA_SCHEDULER_ENABLED": ("sla_scheduler_enabled", lambda x: str(x).strip().lower() in ("true", "1", "yes")),
+    "SLA_CHECK_INTERVAL_MINUTES": ("sla_check_interval_minutes", int),
+    "SLA_TIMEZONE": ("sla_timezone", str),
 }
 
 

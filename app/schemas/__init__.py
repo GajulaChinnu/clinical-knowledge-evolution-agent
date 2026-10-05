@@ -69,6 +69,7 @@ from app.schemas.governance import (
     SLAEscalationResult,
     UnauthorizedReviewerError,
 )
+from app.schemas.scheduler import SLACycleSummary
 from app.schemas.impact import (
     DimensionScore,
     ImpactRecordBase,
@@ -184,4 +185,6 @@ __all__ = [
     "G1ResolutionRequest",
     "G2ResolutionRequest",
     "G3ResolutionRequest",
+    # Scheduler (Phase 11)
+    "SLACycleSummary",
 ]
