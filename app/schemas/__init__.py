@@ -55,12 +55,19 @@ from app.schemas.gaps import (
     GapStatus,
 )
 from app.schemas.governance import (
+    DeferDecisionRequest,
+    GovernanceDecisionRequest,
+    GovernanceGateError,
+    ReassignmentRequest,
     ReviewAssignmentBase,
     ReviewAssignmentCreate,
     ReviewAssignmentDecisionUpdate,
     ReviewAssignmentRead,
     ReviewAssignmentStatus,
     ReviewDecision,
+    ReviewerAssignmentRequest,
+    SLAEscalationResult,
+    UnauthorizedReviewerError,
 )
 from app.schemas.impact import (
     DimensionScore,
@@ -129,12 +136,19 @@ __all__ = [
     "validate_brief_completeness",
     "assert_brief_completeness",
     # Governance
+    "GovernanceGateError",
+    "UnauthorizedReviewerError",
     "ReviewDecision",
     "ReviewAssignmentStatus",
     "ReviewAssignmentBase",
     "ReviewAssignmentCreate",
     "ReviewAssignmentDecisionUpdate",
     "ReviewAssignmentRead",
+    "ReviewerAssignmentRequest",
+    "ReassignmentRequest",
+    "GovernanceDecisionRequest",
+    "DeferDecisionRequest",
+    "SLAEscalationResult",
     # Audit & Notification
     "AuditLogBase",
     "AuditLogCreate",

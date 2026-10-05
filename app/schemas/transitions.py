@@ -42,12 +42,12 @@ CHANGE_TRANSITIONS: Dict[str, Set[str]] = {
     "no_gap": set(),  # Terminal state (no action needed)
 }
 
-# 3. Change Brief Lifecycle Transitions
+# 3. Change Brief Lifecycle Transitions (G4 Human Gate: Closed is ONLY reachable from Decided)
 BRIEF_TRANSITIONS: Dict[str, Set[str]] = {
-    "draft": {"assigned", "deferred", "closed"},
-    "assigned": {"in_review", "deferred", "closed"},
-    "in_review": {"decided", "deferred", "closed"},
-    "deferred": {"assigned", "in_review", "closed"},
+    "draft": {"assigned"},
+    "assigned": {"in_review", "assigned"},  # Reassignment allowed
+    "in_review": {"decided", "deferred"},
+    "deferred": {"assigned", "in_review"},
     "decided": {"closed"},
     "closed": set(),  # Terminal state
 }
