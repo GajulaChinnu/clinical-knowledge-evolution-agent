@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, Optional
 from openai import OpenAI
 
+from app.schemas.comparison import ComparisonResponse
 from app.schemas.extraction import ExtractionResponse
 from app.services.config_service import AppConfig, MissingAPIKeyError, load_config
 
@@ -24,6 +25,25 @@ Extraction Rules:
 7. 'page' must be the page number provided in the prompt.
 8. 'section' must be the section heading provided in the prompt.
 9. 'confidence' must be a confidence score between 0.0 and 1.0 reflecting extraction certainty.
+"""
+
+COMPARISON_SYSTEM_PROMPT = """You are an expert clinical protocol comparison assistant.
+Compare an extracted clinical guideline recommendation against a retrieved institutional protocol section.
+Determine if there is a clinical gap, conflict, dosage change, threshold change, scope change, or no material difference.
+Return a structured JSON object strictly conforming to the schema.
+
+Comparison Rules:
+1. 'comparison_result' must be 'gap' if there is a clinical difference/conflict/addition, 'no_gap' if the recommendation aligns with the protocol without material difference, 'ambiguous' if unclear, or 'no_match' if the section is clinically unrelated.
+2. 'matched_protocol_section' must be the section heading or title provided in the candidate context.
+3. 'protocol_id' must match the protocol ID provided in the prompt.
+4. 'protocol_version' must match the protocol version provided in the prompt.
+5. 'section_id' must match the section ID provided in the prompt.
+6. 'exact_protocol_text' must be the exact verbatim excerpt directly quoted from the candidate protocol section text. Do NOT edit or invent text.
+7. 'specific_difference' must be a concise, objective summary of the textual difference between the recommendation and protocol.
+8. 'difference_type' must be one of: 'threshold_change', 'population_expansion', 'population_restriction', 'intervention_change', 'contraindication', 'monitoring_change', 'frequency_change', 'dosage_change', 'conflict', 'new_recommendation', 'scope_expansion', 'no_material_difference', 'no_match', 'other_supported_change', 'none'.
+9. If 'comparison_result' is 'no_gap', 'difference_type' must be 'none' or 'no_material_difference'.
+10. 'confidence' must be a score between 0.0 and 1.0 reflecting comparison certainty.
+11. 'rationale' must objectively explain the clinical alignment or difference based strictly on the provided texts.
 """
 
 
@@ -141,6 +161,104 @@ class SharedLLMClient:
 
         except Exception as e:
             logger.error("Groq extraction failed: %s: %s", type(e).__name__, str(e))
+            raise
+
+    def compare_recommendation_to_protocol(
+        self,
+        recommendation_text: str,
+        target_population: str,
+        intervention: str,
+        candidate_section_heading: str,
+        candidate_section_text: str,
+        candidate_protocol_id: str,
+        candidate_protocol_version: str,
+        candidate_section_id: str,
+        evidence_grade: Optional[str] = None,
+    ) -> ComparisonResponse:
+        """Call Groq to compare an extracted recommendation against a candidate protocol section.
+
+        Args:
+            recommendation_text: Verbatim clinical recommendation text.
+            target_population: Targeted patient demographic or clinical group.
+            intervention: Recommended clinical intervention, drug, or action.
+            candidate_section_heading: Heading of the candidate protocol section.
+            candidate_section_text: Full text of the candidate protocol section.
+            candidate_protocol_id: Protocol ID (e.g. PROT-DM-001).
+            candidate_protocol_version: Immutable protocol version (e.g. v1.0).
+            candidate_section_id: Candidate section identifier (e.g. SEC-3).
+            evidence_grade: Optional clinical evidence grade.
+
+        Returns:
+            ComparisonResponse containing validated comparison conclusion.
+        """
+        user_prompt = (
+            f"--- EXTRACTED RECOMMENDATION ---\n"
+            f"Recommendation: {recommendation_text}\n"
+            f"Target Population: {target_population}\n"
+            f"Intervention: {intervention}\n"
+            f"Evidence Grade: {evidence_grade or 'None stated'}\n\n"
+            f"--- CANDIDATE PROTOCOL SECTION ---\n"
+            f"Protocol ID: {candidate_protocol_id}\n"
+            f"Protocol Version: {candidate_protocol_version}\n"
+            f"Section ID: {candidate_section_id}\n"
+            f"Section Heading: {candidate_section_heading}\n"
+            f"Section Text:\n{candidate_section_text}\n\n"
+            "Compare the extracted recommendation to the candidate protocol section and output structured comparison JSON."
+        )
+
+        start_time = time.perf_counter()
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": COMPARISON_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "ComparisonResponse",
+                        "strict": True,
+                        "schema": ComparisonResponse.model_json_schema(),
+                    },
+                },
+                temperature=0.0,
+            )
+
+            latency_ms = (time.perf_counter() - start_time) * 1000
+            self.request_count += 1
+
+            usage = completion.usage
+            prompt_tokens = usage.prompt_tokens if usage else None
+            completion_tokens = usage.completion_tokens if usage else None
+            total_tokens = usage.total_tokens if usage else None
+
+            self.last_usage = {
+                "model": self.model,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "request_count": self.request_count,
+                "latency_ms": latency_ms,
+            }
+
+            logger.info(
+                "Groq comparison completed: model=%s, prompt_tokens=%s, completion_tokens=%s, latency_ms=%.1f",
+                self.model,
+                prompt_tokens,
+                completion_tokens,
+                latency_ms,
+            )
+
+            raw_content = completion.choices[0].message.content
+            if not raw_content:
+                raise ValueError("Model returned empty or null comparison content.")
+
+            response = ComparisonResponse.model_validate_json(raw_content)
+            return response
+
+        except Exception as e:
+            logger.error("Groq comparison failed: %s: %s", type(e).__name__, str(e))
             raise
 
     def __repr__(self) -> str:

@@ -20,6 +20,9 @@ from app.schemas.changes import (
     ChangeRecordRead,
     ChangeStatus,
 )
+from app.schemas.comparison import (
+    ComparisonResponse,
+)
 from app.schemas.extraction import (
     ExtractedRecommendation,
     ExtractionResponse,
@@ -93,6 +96,8 @@ __all__ = [
     "ProtocolDocument",
     "CandidateProtocolSection",
     "ProtocolIndexingSummary",
+    # Comparison
+    "ComparisonResponse",
     # Gaps
     "GapStatus",
     "ComparisonResult",

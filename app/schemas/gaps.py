@@ -30,6 +30,16 @@ class DifferenceType(str, Enum):
     CONFLICT = "conflict"
     DOSAGE_CHANGE = "dosage_change"
     SCOPE_EXPANSION = "scope_expansion"
+    POPULATION_EXPANSION = "population_expansion"
+    POPULATION_RESTRICTION = "population_restriction"
+    THRESHOLD_CHANGE = "threshold_change"
+    INTERVENTION_CHANGE = "intervention_change"
+    CONTRAINDICATION = "contraindication"
+    MONITORING_CHANGE = "monitoring_change"
+    FREQUENCY_CHANGE = "frequency_change"
+    NO_MATERIAL_DIFFERENCE = "no_material_difference"
+    NO_MATCH = "no_match"
+    OTHER_SUPPORTED_CHANGE = "other_supported_change"
     NONE = "none"
 
 
