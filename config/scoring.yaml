@@ -1,0 +1,225 @@
+version: "1.0"
+
+dimensions:
+  clinical_urgency:
+    name: "Clinical Urgency"
+    rules:
+      - id: "URGENCY-01"
+        score: 1
+        name: "safety_notice_without_outcome_evidence"
+        basis: "Safety notice or manufacturer communication without independent outcome evidence"
+        criteria:
+          - "safety_notice"
+          - "manufacturer_communication"
+          - "notice_without_outcome_evidence"
+          - "communication_without_outcome_evidence"
+          - "no_material_difference"
+          - "1"
+          - "urgency_1"
+      - id: "URGENCY-02"
+        score: 2
+        name: "workflow_or_documentation_change"
+        basis: "Non-safety workflow or documentation change without timing or diagnostic consequence"
+        criteria:
+          - "workflow_change"
+          - "documentation_change"
+          - "non_safety_workflow"
+          - "administrative_change"
+          - "population_expansion"
+          - "population_restriction"
+          - "scope_expansion"
+          - "2"
+          - "urgency_2"
+      - id: "URGENCY-03"
+        score: 3
+        name: "monitoring_frequency_or_diagnostic_criterion_change"
+        basis: "Monitoring frequency or diagnostic criterion change"
+        criteria:
+          - "monitoring_frequency"
+          - "diagnostic_criterion_change"
+          - "monitoring_change"
+          - "frequency_change"
+          - "threshold_change"
+          - "screening_interval_change"
+          - "3"
+          - "urgency_3"
+      - id: "URGENCY-04"
+        score: 4
+        name: "time_sensitive_treatment_or_monitoring_change"
+        basis: "Time-sensitive treatment or monitoring change where delay may worsen outcomes"
+        criteria:
+          - "time_sensitive_treatment"
+          - "dosage_change"
+          - "intervention_change"
+          - "conflict"
+          - "delay_worsens_outcomes"
+          - "urgent_treatment_change"
+          - "4"
+          - "urgency_4"
+      - id: "URGENCY-05"
+        score: 5
+        name: "safety_warning_or_contraindication"
+        basis: "Safety warning or contraindication involving a known harm risk"
+        criteria:
+          - "contraindication"
+          - "safety_warning"
+          - "known_harm_risk"
+          - "black_box_warning"
+          - "harm_risk"
+          - "5"
+          - "urgency_5"
+
+  evidence_strength:
+    name: "Evidence Strength"
+    rules:
+      - id: "EVIDENCE-01"
+        score: 1
+        name: "safety_notice_or_manufacturer_communication"
+        basis: "Safety notice or manufacturer communication"
+        criteria:
+          - "safety_notice"
+          - "manufacturer_communication"
+          - "Level 5"
+          - "Grade D"
+          - "expert_opinion_only"
+          - "opinion_only"
+          - "1"
+          - "evidence_1"
+      - id: "EVIDENCE-02"
+        score: 2
+        name: "limited_case_series_or_observational_evidence"
+        basis: "Limited case-series, observational, or indirect evidence"
+        criteria:
+          - "case_series"
+          - "observational_limited"
+          - "indirect_evidence"
+          - "Level 4"
+          - "Grade C"
+          - "Class III"
+          - "2"
+          - "evidence_2"
+      - id: "EVIDENCE-03"
+        score: 3
+        name: "expert_consensus_supported_by_observational_data"
+        basis: "Expert consensus supported by observational data"
+        criteria:
+          - "expert_consensus"
+          - "consensus_observational"
+          - "Level 3"
+          - "Grade B"
+          - "Class IIb"
+          - "3"
+          - "evidence_3"
+      - id: "EVIDENCE-04"
+        score: 4
+        name: "high_quality_observational_or_systematic_synthesis"
+        basis: "High-quality observational evidence or systematic synthesis with moderate certainty"
+        criteria:
+          - "high_quality_observational"
+          - "systematic_synthesis"
+          - "moderate_certainty"
+          - "Level 2"
+          - "Grade B+"
+          - "Class IIa"
+          - "4"
+          - "evidence_4"
+      - id: "EVIDENCE-05"
+        score: 5
+        name: "class_i_or_grade_1a_systematic_review_or_rct"
+        basis: "Class I / Grade 1A systematic review or RCT"
+        criteria:
+          - "Class I"
+          - "Grade 1A"
+          - "Grade A"
+          - "RCT"
+          - "systematic_review"
+          - "randomized_controlled_trial"
+          - "Level 1"
+          - "5"
+          - "evidence_5"
+
+  pathway_breadth:
+    name: "Pathway Breadth"
+    rules:
+      - id: "BREADTH-01"
+        score: 1
+        name: "sub_specialty_or_edge_population_only"
+        basis: "Sub-specialty or edge population only"
+        criteria:
+          - "sub_specialty"
+          - "edge_population"
+          - "rare_disease"
+          - "isolated_cohort"
+          - "1"
+          - "breadth_1"
+      - id: "BREADTH-02"
+        score: 2
+        name: "one_care_team_or_workflow"
+        basis: "One care team or workflow"
+        criteria:
+          - "one_care_team"
+          - "single_care_team"
+          - "single_workflow"
+          - "departmental_workflow"
+          - "2"
+          - "breadth_2"
+      - id: "BREADTH-03"
+        score: 3
+        name: "one_specialty_multiple_care_pathways"
+        basis: "One specialty, multiple care pathways"
+        criteria:
+          - "one_specialty"
+          - "single_specialty_multiple_pathways"
+          - "specialty_wide"
+          - "multiple_care_pathways"
+          - "3"
+          - "breadth_3"
+      - id: "BREADTH-04"
+        score: 4
+        name: "two_or_three_specialties"
+        basis: "Two or three specialties"
+        criteria:
+          - "two_or_three_specialties"
+          - "2_3_specialties"
+          - "multi_specialty"
+          - "cross_specialty"
+          - "4"
+          - "breadth_4"
+      - id: "BREADTH-05"
+        score: 5
+        name: "four_or_more_specialties_or_organisation_wide"
+        basis: "Four or more specialties, or organisation-wide impact"
+        criteria:
+          - "four_or_more_specialties"
+          - "organisation_wide"
+          - "organization_wide"
+          - "system_wide"
+          - "hospital_wide"
+          - "5"
+          - "breadth_5"
+
+tiers:
+  Critical:
+    min_score: 12
+    max_score: 15
+    sla_hours: 48
+    sla_days: 2
+    routing_target: "Rapid Governance Committee"
+  High:
+    min_score: 8
+    max_score: 11
+    sla_hours: 168
+    sla_days: 7
+    routing_target: "Clinical Governance Board"
+  Standard:
+    min_score: 4
+    max_score: 7
+    sla_hours: 720
+    sla_days: 30
+    routing_target: "Protocol Review Committee"
+  Low:
+    min_score: 3
+    max_score: 3
+    sla_hours: 2160
+    sla_days: 90
+    routing_target: "Routine Maintenance Review"

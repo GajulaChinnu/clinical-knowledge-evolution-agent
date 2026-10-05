@@ -59,11 +59,13 @@ from app.schemas.governance import (
     ReviewDecision,
 )
 from app.schemas.impact import (
+    DimensionScore,
     ImpactRecordBase,
     ImpactRecordCreate,
     ImpactRecordRead,
     ImpactStatus,
     ImpactTier,
+    ScoringResult,
 )
 from app.schemas.transitions import (
     BRIEF_TRANSITIONS,
@@ -108,6 +110,8 @@ __all__ = [
     # Impact
     "ImpactTier",
     "ImpactStatus",
+    "DimensionScore",
+    "ScoringResult",
     "ImpactRecordBase",
     "ImpactRecordCreate",
     "ImpactRecordRead",

@@ -4,6 +4,22 @@ version = "0.1.0"
 description = "Clinical Knowledge Evolution Agent (CKEA) - Multi-agent clinical protocol evolution system"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "openai>=3.22.1",
+    "pydantic>=2.13.5",
+    "sqlalchemy>=2.1.1",
+    "chromadb>=1.5.9",
+    "sentence-transformers>=6.1.0",
+    "pdfplumber>=0.11.10",
+    "spacy>=3.8.16",
+    "jinja2>=3.1.6",
+    "streamlit>=1.64.0",
+    "apscheduler>=3.11.3",
+    "transitions>=0.9.3",
+    "python-dotenv>=1.2.3",
+    "pytest>=9.1.1",
+    "PyYAML>=6.0.3",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
