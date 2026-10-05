@@ -86,6 +86,17 @@ from app.schemas.transitions import (
     is_valid_transition,
     validate_transition,
 )
+from app.schemas.orchestration import (
+    ArtifactsManifest,
+    BatchPipelineResult,
+    G1ResolutionRequest,
+    G2ResolutionRequest,
+    G3ResolutionRequest,
+    HumanGate,
+    PipelineResult,
+    PipelineStage,
+    PipelineStatus,
+)
 
 __all__ = [
     # Documents
@@ -163,4 +174,14 @@ __all__ = [
     "InvalidStateTransitionError",
     "is_valid_transition",
     "validate_transition",
+    # Orchestration
+    "PipelineStage",
+    "PipelineStatus",
+    "HumanGate",
+    "ArtifactsManifest",
+    "PipelineResult",
+    "BatchPipelineResult",
+    "G1ResolutionRequest",
+    "G2ResolutionRequest",
+    "G3ResolutionRequest",
 ]
