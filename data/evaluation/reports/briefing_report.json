@@ -1,0 +1,51 @@
+{
+  "suite_name": "Briefing",
+  "total_cases": 3,
+  "passed": 3,
+  "failed": 0,
+  "held_expected": 0,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "seven_sections_verified": true,
+    "hash_stability_verified": true
+  },
+  "case_results": [
+    {
+      "case_id": "BRF-01",
+      "suite": "briefing",
+      "outcome": "PASS",
+      "message": "All seven brief sections are strictly complete and non-empty",
+      "expected_behavior": "is_complete=True",
+      "actual_behavior": "is_complete=True",
+      "provenance_valid": true,
+      "metrics": {
+        "sections_present": 7,
+        "missing_count": 0
+      },
+      "details": {}
+    },
+    {
+      "case_id": "BRF-02",
+      "suite": "briefing",
+      "outcome": "PASS",
+      "message": "Verbatim recommendation text is preserved without alteration",
+      "expected_behavior": "Exact verbatim match in source excerpt",
+      "actual_behavior": "Preserved",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "BRF-03",
+      "suite": "briefing",
+      "outcome": "PASS",
+      "message": "Brief rendering is completely deterministic with stable SHA-256 hash",
+      "expected_behavior": "Identical hash on repeated rendering",
+      "actual_behavior": "Hash stable: 64c2d8f3a342...",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    }
+  ]
+}

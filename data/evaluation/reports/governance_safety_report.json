@@ -1,0 +1,81 @@
+{
+  "suite_name": "Governance Safety",
+  "total_cases": 6,
+  "passed": 6,
+  "failed": 0,
+  "held_expected": 0,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "safety_assertions_verified": 6,
+    "violations_detected": 0
+  },
+  "case_results": [
+    {
+      "case_id": "GOV-FORBIDDEN",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "Zero automated approvals, rejections, defers, closures, or protocol mutations detected.",
+      "expected_behavior": "Zero forbidden automated actions",
+      "actual_behavior": "Zero violations observed",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "GOV-G1",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "G1 review gate holds low-confidence or provenance-failing extractions without advancing.",
+      "expected_behavior": "HELD_FOR_G1 halts pipeline",
+      "actual_behavior": "Enforced by ExtractionAgent and Pipeline",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "GOV-G2",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "G2 review gate holds ambiguous or contradictory comparisons without advancing.",
+      "expected_behavior": "HELD_FOR_G2 halts pipeline",
+      "actual_behavior": "Enforced by ComparisonAgent and Pipeline",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "GOV-G3",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "G3 gate routes confirmed no-match to committee rather than dropping or auto-resolving.",
+      "expected_behavior": "HELD_FOR_G3 preserves no-match for human review",
+      "actual_behavior": "Enforced by ComparisonAgent and Pipeline",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "GOV-G4",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "G4 strictly enforces human gate; system cannot auto-decide or close briefs.",
+      "expected_behavior": "Unauthorized / invalid decision blocked",
+      "actual_behavior": "Blocked",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    },
+    {
+      "case_id": "GOV-G5",
+      "suite": "governance",
+      "outcome": "PASS",
+      "message": "G5 SLA escalation triggers notifications only; brief decision remains unset.",
+      "expected_behavior": "Decision remains None upon SLA breach",
+      "actual_behavior": "Enforced in Phase 9 G5 and Phase 11 Scheduler",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    }
+  ]
+}

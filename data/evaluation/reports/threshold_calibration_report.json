@@ -1,0 +1,77 @@
+{
+  "extraction_threshold": 0.7,
+  "comparison_threshold": 0.7,
+  "boundary_range": [
+    0.55,
+    0.75
+  ],
+  "extraction_boundary_cases": [
+    {
+      "case_id": "EXT-16",
+      "domain": "extraction",
+      "score_type": "confidence",
+      "observed_score": 0.65,
+      "threshold": 0.7,
+      "distance_to_threshold": -0.05,
+      "observed_outcome": "HELD_FOR_G1",
+      "expected_outcome": "held_for_g1",
+      "notes": "Extraction case 'ambiguous_recommendation': score sits near 0.70 boundary."
+    },
+    {
+      "case_id": "EXT-17",
+      "domain": "extraction",
+      "score_type": "confidence",
+      "observed_score": 0.58,
+      "threshold": 0.7,
+      "distance_to_threshold": -0.12,
+      "observed_outcome": "HELD_FOR_G1",
+      "expected_outcome": "held_for_g1",
+      "notes": "Extraction case 'low_confidence_g1': score sits near 0.70 boundary."
+    }
+  ],
+  "comparison_boundary_cases": [
+    {
+      "case_id": "CMP-10",
+      "domain": "comparison",
+      "score_type": "confidence",
+      "observed_score": 0.5,
+      "threshold": 0.7,
+      "distance_to_threshold": -0.2,
+      "observed_outcome": "HELD_FOR_G2",
+      "expected_outcome": "review_required",
+      "notes": "Comparison scenario 'ambiguous': boundary score."
+    },
+    {
+      "case_id": "CMP-11",
+      "domain": "comparison",
+      "score_type": "confidence",
+      "observed_score": 0.6,
+      "threshold": 0.7,
+      "distance_to_threshold": -0.1,
+      "observed_outcome": "HELD_FOR_G2",
+      "expected_outcome": "review_required",
+      "notes": "Comparison scenario 'contradiction': boundary score."
+    },
+    {
+      "case_id": "CMP-16",
+      "domain": "comparison",
+      "score_type": "confidence",
+      "observed_score": 0.71,
+      "threshold": 0.7,
+      "distance_to_threshold": 0.01,
+      "observed_outcome": "MATCHED",
+      "expected_outcome": "matched",
+      "notes": "Comparison scenario 'threshold_boundary': boundary score."
+    }
+  ],
+  "observations": [
+    "Extraction threshold 0.70 appropriately routes ambiguous (0.65) and preliminary (0.58) recommendations to G1.",
+    "Comparison threshold 0.70 successfully separates confirmed no-match cases (<0.40) from near-match candidate sections (0.71).",
+    "No spurious false-positives crossed the 0.70 boundary into unverified progression."
+  ],
+  "recommendations": [
+    "Maintain provisional 0.70 routing thresholds in current production configuration.",
+    "In future clinical specialty deployments, consider evaluating a separate 0.65 threshold for oncology or rare disease pathways.",
+    "Do NOT alter production configuration automatically based on this evaluation."
+  ]
+}

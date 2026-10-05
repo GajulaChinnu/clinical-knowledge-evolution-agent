@@ -1,0 +1,96 @@
+{
+  "suite_name": "Impact",
+  "total_cases": 6,
+  "passed": 6,
+  "failed": 0,
+  "held_expected": 0,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "rule_version": "1.0",
+    "immutability_enforced": true
+  },
+  "case_results": [
+    {
+      "case_id": "IMP-01",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Score=14, Tier=Critical, SLA=48h",
+      "expected_behavior": "Tier=ImpactTier.CRITICAL, SLA_hours=48",
+      "actual_behavior": "Tier=ImpactTier.CRITICAL, SLA_hours=48",
+      "provenance_valid": true,
+      "metrics": {
+        "total_score": 14,
+        "is_complete": true
+      },
+      "details": {}
+    },
+    {
+      "case_id": "IMP-02",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Score=9, Tier=High, SLA=168h",
+      "expected_behavior": "Tier=ImpactTier.HIGH, SLA_hours=168",
+      "actual_behavior": "Tier=ImpactTier.HIGH, SLA_hours=168",
+      "provenance_valid": true,
+      "metrics": {
+        "total_score": 9,
+        "is_complete": true
+      },
+      "details": {}
+    },
+    {
+      "case_id": "IMP-03",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Score=6, Tier=Standard, SLA=720h",
+      "expected_behavior": "Tier=ImpactTier.STANDARD, SLA_hours=720",
+      "actual_behavior": "Tier=ImpactTier.STANDARD, SLA_hours=720",
+      "provenance_valid": true,
+      "metrics": {
+        "total_score": 6,
+        "is_complete": true
+      },
+      "details": {}
+    },
+    {
+      "case_id": "IMP-04",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Score=3, Tier=Low, SLA=2160h",
+      "expected_behavior": "Tier=ImpactTier.LOW, SLA_hours=2160",
+      "actual_behavior": "Tier=ImpactTier.LOW, SLA_hours=2160",
+      "provenance_valid": true,
+      "metrics": {
+        "total_score": 3,
+        "is_complete": true
+      },
+      "details": {}
+    },
+    {
+      "case_id": "IMP-05",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Incomplete score correctly un-tiered: complete=False",
+      "expected_behavior": "Tier=None, SLA_hours=None",
+      "actual_behavior": "Tier=None, SLA_hours=None",
+      "provenance_valid": true,
+      "metrics": {
+        "total_score": null,
+        "is_complete": false
+      },
+      "details": {}
+    },
+    {
+      "case_id": "IMP-06",
+      "suite": "impact",
+      "outcome": "PASS",
+      "message": "Automatic tier downgrade was successfully blocked",
+      "expected_behavior": "TierDowngradeBlockedError",
+      "actual_behavior": "Blocked",
+      "provenance_valid": true,
+      "metrics": {},
+      "details": {}
+    }
+  ]
+}

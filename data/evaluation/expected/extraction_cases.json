@@ -1,0 +1,593 @@
+[
+  {
+    "case_id": "EXT-01",
+    "title": "Clear first-line recommendation",
+    "filename": "ext_01_clear_rec.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-01",
+    "condition_type": "clear_recommendation",
+    "pages": [
+      [
+        "1. Clinical Recommendations",
+        "Adult patients with type 2 diabetes should receive metformin 500mg daily as first-line therapy."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.95,
+    "verbatim_text": "Adult patients with type 2 diabetes should receive metformin 500mg daily as first-line therapy.",
+    "recommendation_type": "treatment",
+    "target_population": "Adult patients with type 2 diabetes",
+    "intervention": "Metformin 500mg daily as first-line therapy",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Clinical Recommendations",
+    "rationale": "Clear explicit treatment recommendation with high evidence and confidence."
+  },
+  {
+    "case_id": "EXT-02",
+    "title": "Dosage change recommendation",
+    "filename": "ext_02_dosage_change.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-02",
+    "condition_type": "dosage_change",
+    "pages": [
+      [
+        "1. Pharmacotherapy Dosing",
+        "Adults with type 2 diabetes should initiate metformin at 1000mg twice daily with meals."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "dosage_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.94,
+    "verbatim_text": "Adults with type 2 diabetes should initiate metformin at 1000mg twice daily with meals.",
+    "recommendation_type": "dosing",
+    "target_population": "Adults with type 2 diabetes",
+    "intervention": "Metformin 1000mg twice daily with meals",
+    "evidence_grade": "Grade B",
+    "page": 1,
+    "section": "1. Pharmacotherapy Dosing",
+    "rationale": "Explicit dosage increase compared to baseline institutional protocol (1000mg BID vs 500mg daily)."
+  },
+  {
+    "case_id": "EXT-03",
+    "title": "Monitoring frequency change",
+    "filename": "ext_03_monitoring_freq.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-03",
+    "condition_type": "monitoring_frequency_change",
+    "pages": [
+      [
+        "1. Renal Monitoring Recommendations",
+        "Clinicians should monitor eGFR every 6 months in all adult patients receiving metformin."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "frequency_change",
+    "expected_impact_tier": "high",
+    "expected_sla": "7 days",
+    "confidence": 0.92,
+    "verbatim_text": "Clinicians should monitor eGFR every 6 months in all adult patients receiving metformin.",
+    "recommendation_type": "monitoring",
+    "target_population": "Adult patients receiving metformin",
+    "intervention": "eGFR monitoring every 6 months",
+    "evidence_grade": "Grade B",
+    "page": 1,
+    "section": "1. Renal Monitoring Recommendations",
+    "rationale": "Tightens renal surveillance frequency from annual to semi-annual."
+  },
+  {
+    "case_id": "EXT-04",
+    "title": "Diagnostic criterion threshold change",
+    "filename": "ext_04_diagnostic_criterion.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-04",
+    "condition_type": "diagnostic_criterion_change",
+    "pages": [
+      [
+        "1. Diagnostic Thresholds and Recommendations",
+        "The recommended diagnostic threshold for type 2 diabetes is fasting plasma glucose >= 125 mg/dL or HbA1c >= 6.3%."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "threshold_change",
+    "expected_impact_tier": "high",
+    "expected_sla": "7 days",
+    "confidence": 0.93,
+    "verbatim_text": "The recommended diagnostic threshold for type 2 diabetes is fasting plasma glucose >= 125 mg/dL or HbA1c >= 6.3%.",
+    "recommendation_type": "diagnostic",
+    "target_population": "Adult patients undergoing screening",
+    "intervention": "Fasting plasma glucose >= 125 mg/dL or HbA1c >= 6.3%",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Diagnostic Thresholds and Recommendations",
+    "rationale": "Changes diagnostic thresholds downward from standard 126 mg/dL and 6.5%."
+  },
+  {
+    "case_id": "EXT-05",
+    "title": "Urgent safety warning",
+    "filename": "ext_05_safety_warning.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-05",
+    "condition_type": "safety_warning",
+    "pages": [
+      [
+        "1. Safety Notice and Warnings",
+        "Metformin therapy should be immediately suspended in patients developing acute hypoxemia due to lactic acidosis risk."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "contraindication",
+    "expected_impact_tier": "critical",
+    "expected_sla": "48 hours",
+    "confidence": 0.91,
+    "verbatim_text": "Metformin therapy should be immediately suspended in patients developing acute hypoxemia due to lactic acidosis risk.",
+    "recommendation_type": "safety_warning",
+    "target_population": "Patients on metformin developing acute hypoxemia",
+    "intervention": "Immediate metformin suspension",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Safety Notice and Warnings",
+    "rationale": "Acute life-safety notice with critical impact tier requiring rapid 48h turnaround."
+  },
+  {
+    "case_id": "EXT-06",
+    "title": "Strict contraindication rule",
+    "filename": "ext_06_contraindication.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-06",
+    "condition_type": "contraindication",
+    "pages": [
+      [
+        "1. Contraindications",
+        "Metformin is contraindicated in patients with eGFR below 30 mL/min/1.73m2 or undergoing iodinated radiocontrast."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "contraindication",
+    "expected_impact_tier": "critical",
+    "expected_sla": "48 hours",
+    "confidence": 0.96,
+    "verbatim_text": "Metformin is contraindicated in patients with eGFR below 30 mL/min/1.73m2 or undergoing iodinated radiocontrast.",
+    "recommendation_type": "contraindication",
+    "target_population": "Patients with eGFR < 30 or undergoing iodinated radiocontrast",
+    "intervention": "Withhold or avoid metformin",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Contraindications",
+    "rationale": "Formal contraindication expanding safety restrictions for radiocontrast."
+  },
+  {
+    "case_id": "EXT-07",
+    "title": "Population-specific recommendation",
+    "filename": "ext_07_population_specific.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-07",
+    "condition_type": "population_specific",
+    "pages": [
+      [
+        "1. Geriatric Considerations",
+        "In elderly adults aged 75 years and older, target HbA1c should be relaxed to less than 8.0%."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "population_restriction",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.9,
+    "verbatim_text": "In elderly adults aged 75 years and older, target HbA1c should be relaxed to less than 8.0%.",
+    "recommendation_type": "treatment",
+    "target_population": "Elderly adults aged 75 years and older",
+    "intervention": "Relaxed glycemic target HbA1c < 8.0%",
+    "evidence_grade": "Grade B",
+    "page": 1,
+    "section": "1. Geriatric Considerations",
+    "rationale": "Population subgroup stratification tailoring glycemic target."
+  },
+  {
+    "case_id": "EXT-08",
+    "title": "Explicit evidence grade present",
+    "filename": "ext_08_evidence_grade_present.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-08",
+    "condition_type": "evidence_grade_present",
+    "pages": [
+      [
+        "1. Evidence-Based Interventions",
+        "Clinicians should prescribe SGLT2 inhibitors for diabetic patients with established cardiovascular disease (Grade A)."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "high",
+    "expected_sla": "7 days",
+    "confidence": 0.94,
+    "verbatim_text": "Clinicians should prescribe SGLT2 inhibitors for diabetic patients with established cardiovascular disease (Grade A).",
+    "recommendation_type": "treatment",
+    "target_population": "Diabetic patients with established cardiovascular disease",
+    "intervention": "Prescribe SGLT2 inhibitors",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Evidence-Based Interventions",
+    "rationale": "Clear Grade A citation directly in sentence body."
+  },
+  {
+    "case_id": "EXT-09",
+    "title": "Evidence grade missing",
+    "filename": "ext_09_evidence_grade_missing.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-09",
+    "condition_type": "evidence_grade_missing",
+    "pages": [
+      [
+        "1. Practice Recommendations",
+        "Lifestyle modification including 150 minutes of weekly aerobic exercise should be recommended to all diabetic adults."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "impact",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": null,
+    "expected_sla": null,
+    "confidence": 0.88,
+    "verbatim_text": "Lifestyle modification including 150 minutes of weekly aerobic exercise should be recommended to all diabetic adults.",
+    "recommendation_type": "lifestyle",
+    "target_population": "All diabetic adults",
+    "intervention": "150 minutes of weekly aerobic exercise",
+    "evidence_grade": null,
+    "page": 1,
+    "section": "1. Practice Recommendations",
+    "rationale": "Valid clinical recommendation where evidence grade is unstated; halts at impact stage due to incomplete evidence dimension without guessing tiers."
+  },
+  {
+    "case_id": "EXT-10",
+    "title": "Multiple discrete recommendations in single section",
+    "filename": "ext_10_multiple_recs.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-10",
+    "condition_type": "multiple_recommendations",
+    "pages": [
+      [
+        "1. Combined Clinical Guidance",
+        "Adult patients with type 2 diabetes should receive metformin 500mg daily.",
+        "Additionally, clinicians should prescribe GLP-1 receptor agonists if HbA1c remains above target."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "high",
+    "expected_sla": "7 days",
+    "confidence": 0.93,
+    "verbatim_text": "Adult patients with type 2 diabetes should receive metformin 500mg daily.",
+    "recommendation_type": "treatment",
+    "target_population": "Adult patients with type 2 diabetes",
+    "intervention": "Metformin 500mg daily",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Combined Clinical Guidance",
+    "rationale": "Verifies extractor isolates multiple distinct recommendations."
+  },
+  {
+    "case_id": "EXT-11",
+    "title": "Different section layout (Appendix)",
+    "filename": "ext_11_appendix_layout.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-11",
+    "condition_type": "different_section_layouts",
+    "pages": [
+      [
+        "Section 9: Appendix B Clinical Guidance",
+        "Clinicians should initiate basal insulin therapy when symptomatic hyperglycemia persists despite dual oral therapy."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.92,
+    "verbatim_text": "Clinicians should initiate basal insulin therapy when symptomatic hyperglycemia persists despite dual oral therapy.",
+    "recommendation_type": "treatment",
+    "target_population": "Patients with persistent symptomatic hyperglycemia",
+    "intervention": "Basal insulin therapy",
+    "evidence_grade": "Grade B",
+    "page": 1,
+    "section": "Section 9: Appendix B Clinical Guidance",
+    "rationale": "Recommendation nested in non-standard Appendix heading pattern."
+  },
+  {
+    "case_id": "EXT-12",
+    "title": "Recommendation on Page 2 of multi-page document",
+    "filename": "ext_12_multipage_page2.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-12",
+    "condition_type": "recommendation_different_page",
+    "pages": [
+      [
+        "CLINICAL GUIDELINE OVERVIEW",
+        "This document summarizes institutional glycemic guidance for ambulatory clinics."
+      ],
+      [
+        "1. Treatment Recommendations",
+        "Adult patients with type 2 diabetes should be started on metformin 850mg once daily."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "dosage_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.93,
+    "verbatim_text": "Adult patients with type 2 diabetes should be started on metformin 850mg once daily.",
+    "recommendation_type": "dosing",
+    "target_population": "Adult patients with type 2 diabetes",
+    "intervention": "Metformin 850mg once daily",
+    "evidence_grade": "Grade A",
+    "page": 2,
+    "section": "1. Treatment Recommendations",
+    "rationale": "Verifies multi-page tracking and page provenance attribution (page 2)."
+  },
+  {
+    "case_id": "EXT-13",
+    "title": "Irrelevant preface section prior to recommendations",
+    "filename": "ext_13_irrelevant_preface.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-13",
+    "condition_type": "irrelevant_sections_before",
+    "pages": [
+      [
+        "Historical Background and Epidemiology",
+        "Type 2 diabetes prevalence has escalated globally over recent decades.",
+        "1. Management Protocol",
+        "Adult patients should receive dietary counseling and metformin 500mg daily."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.94,
+    "verbatim_text": "Adult patients should receive dietary counseling and metformin 500mg daily.",
+    "recommendation_type": "treatment",
+    "target_population": "Adult patients",
+    "intervention": "Dietary counseling and metformin 500mg daily",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Management Protocol",
+    "rationale": "Proves candidate section filter bypasses background section without recommendations."
+  },
+  {
+    "case_id": "EXT-14",
+    "title": "Recommendation surrounded by distracting narrative",
+    "filename": "ext_14_distracting_text.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-14",
+    "condition_type": "distracting_clinical_text",
+    "pages": [
+      [
+        "1. Pharmacotherapy and Observations",
+        "Observational cohort data from 2021 noted varied adherence rates in clinic settings.",
+        "Adult patients with type 2 diabetes should receive metformin 500mg daily.",
+        "Further retrospective analyses are planned next year by the registry team."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "dosage_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.92,
+    "verbatim_text": "Adult patients with type 2 diabetes should receive metformin 500mg daily.",
+    "recommendation_type": "treatment",
+    "target_population": "Adult patients with type 2 diabetes",
+    "intervention": "Metformin 500mg daily",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Pharmacotherapy and Observations",
+    "rationale": "Verbatim recommendation isolated accurately amidst non-actionable commentary."
+  },
+  {
+    "case_id": "EXT-15",
+    "title": "Complex punctuation and symbols provenance edge case",
+    "filename": "ext_15_provenance_symbols.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-15",
+    "condition_type": "provenance_edge_case",
+    "pages": [
+      [
+        "1. Glycemic Targets and Thresholds",
+        "Target HbA1c for non-pregnant adult patients is < 7.0% (53 mmol/mol), reducing microvascular complications."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "threshold_change",
+    "expected_impact_tier": "high",
+    "expected_sla": "7 days",
+    "confidence": 0.95,
+    "verbatim_text": "Target HbA1c for non-pregnant adult patients is < 7.0% (53 mmol/mol), reducing microvascular complications.",
+    "recommendation_type": "target",
+    "target_population": "Non-pregnant adult patients",
+    "intervention": "Target HbA1c < 7.0% (53 mmol/mol)",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Glycemic Targets and Thresholds",
+    "rationale": "Exact match verification retains parentheses and mathematical symbols."
+  },
+  {
+    "case_id": "EXT-16",
+    "title": "Ambiguous recommendation phrasing requiring human review",
+    "filename": "ext_16_ambiguous_rec.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-16",
+    "condition_type": "ambiguous_recommendation",
+    "pages": [
+      [
+        "1. Treatment Considerations",
+        "Clinicians may consider alternative non-metformin therapies if individual clinical circumstances suggest potential benefits."
+      ]
+    ],
+    "expected_behavior": "held_for_g1",
+    "expected_status": "held_for_G1",
+    "expected_gate": "G1",
+    "expected_pipeline_stage": "extraction",
+    "expected_difference_type": "none",
+    "expected_impact_tier": null,
+    "expected_sla": null,
+    "confidence": 0.65,
+    "verbatim_text": "Clinicians may consider alternative non-metformin therapies if individual clinical circumstances suggest potential benefits.",
+    "recommendation_type": "treatment",
+    "target_population": "Patients with potential benefits from alternatives",
+    "intervention": "Alternative non-metformin therapies",
+    "evidence_grade": null,
+    "page": 1,
+    "section": "1. Treatment Considerations",
+    "rationale": "Weak recommendation confidence (0.65 < 0.70 threshold) routes to G1 human review."
+  },
+  {
+    "case_id": "EXT-17",
+    "title": "Low-confidence extraction case",
+    "filename": "ext_07_low_confidence_g1.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-17",
+    "condition_type": "low_confidence_g1",
+    "pages": [
+      [
+        "1. Preliminary Therapy Suggestions",
+        "Some clinical practitioners suggest adjusting bedtime dosing for borderline glucose readings."
+      ]
+    ],
+    "expected_behavior": "held_for_g1",
+    "expected_status": "held_for_G1",
+    "expected_gate": "G1",
+    "expected_pipeline_stage": "extraction",
+    "expected_difference_type": "none",
+    "expected_impact_tier": null,
+    "expected_sla": null,
+    "confidence": 0.58,
+    "verbatim_text": "Some clinical practitioners suggest adjusting bedtime dosing for borderline glucose readings.",
+    "recommendation_type": "dosing",
+    "target_population": "Patients with borderline glucose",
+    "intervention": "Adjust bedtime dosing",
+    "evidence_grade": null,
+    "page": 1,
+    "section": "1. Preliminary Therapy Suggestions",
+    "rationale": "Confidence 0.58 is strictly below production 0.70 threshold, halting at G1."
+  },
+  {
+    "case_id": "EXT-18",
+    "title": "Low-confidence recommendation text held for G1 review",
+    "filename": "ext_18_malformed_invalid.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-18",
+    "condition_type": "malformed_invalid",
+    "pages": [
+      [
+        "1. Protocol Considerations and Recommendations",
+        "Clinicians should consider uncertain therapy adjustments as deemed appropriate."
+      ]
+    ],
+    "expected_behavior": "held_for_g1",
+    "expected_status": "held_for_G1",
+    "expected_gate": "G1",
+    "expected_pipeline_stage": "extraction",
+    "expected_difference_type": "none",
+    "expected_impact_tier": null,
+    "expected_sla": null,
+    "confidence": 0.4,
+    "verbatim_text": "Clinicians should consider uncertain therapy adjustments as deemed appropriate.",
+    "recommendation_type": "treatment",
+    "target_population": "Patients with uncertain therapy needs",
+    "intervention": "Uncertain therapy adjustments",
+    "evidence_grade": null,
+    "page": 1,
+    "section": "1. Protocol Considerations and Recommendations",
+    "rationale": "Produces low-confidence / unparseable extraction held strictly for G1 human review."
+  },
+  {
+    "case_id": "EXT-19",
+    "title": "Source quote hallucination mismatch edge case",
+    "filename": "ext_19_quote_mismatch.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-19",
+    "condition_type": "source_quote_mismatch",
+    "pages": [
+      [
+        "1. Pharmacologic Therapy",
+        "Adult patients with type 2 diabetes should take metformin 500mg once daily."
+      ]
+    ],
+    "expected_behavior": "held_for_g1",
+    "expected_status": "held_for_G1",
+    "expected_gate": "G1",
+    "expected_pipeline_stage": "extraction",
+    "expected_difference_type": "none",
+    "expected_impact_tier": null,
+    "expected_sla": null,
+    "confidence": 0.95,
+    "verbatim_text": "Patients with diabetes must take sulfonylureas 10mg daily.",
+    "recommendation_type": "treatment",
+    "target_population": "Patients with diabetes",
+    "intervention": "Sulfonylureas 10mg daily",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Pharmacologic Therapy",
+    "rationale": "Verbatim quote does not exist in source section text; fails provenance verification and halts at G1."
+  },
+  {
+    "case_id": "EXT-20",
+    "title": "Document with multiple plausible candidate sections",
+    "filename": "ext_20_multiple_candidates.pdf",
+    "source_identifier": "SYN-ADA-2026-EXT-20",
+    "condition_type": "multiple_candidate_sections",
+    "pages": [
+      [
+        "1. Primary First-Line Treatment",
+        "Adult patients should receive metformin 500mg daily.",
+        "2. Secondary Treatment Options",
+        "If metformin intolerance occurs, clinicians should substitute with DPP-4 inhibitors."
+      ]
+    ],
+    "expected_behavior": "extracted_successfully",
+    "expected_status": "extracted",
+    "expected_gate": null,
+    "expected_pipeline_stage": "governance",
+    "expected_difference_type": "intervention_change",
+    "expected_impact_tier": "standard",
+    "expected_sla": "30 days",
+    "confidence": 0.94,
+    "verbatim_text": "Adult patients should receive metformin 500mg daily.",
+    "recommendation_type": "treatment",
+    "target_population": "Adult patients",
+    "intervention": "Metformin 500mg daily",
+    "evidence_grade": "Grade A",
+    "page": 1,
+    "section": "1. Primary First-Line Treatment",
+    "rationale": "Verifies candidate section detection and extraction across multiple eligible sections."
+  }
+]

@@ -1,0 +1,338 @@
+{
+  "suite_name": "End-to-End Pipeline",
+  "total_cases": 20,
+  "passed": 16,
+  "failed": 0,
+  "held_expected": 4,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "total_documents": 20,
+    "passed_to_governance": 16,
+    "held_at_human_gates": 4,
+    "failed": 0,
+    "zero_auto_decisions_verified": true
+  },
+  "case_results": [
+    {
+      "case_id": "EXT-01",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "clear_recommendation"
+      }
+    },
+    {
+      "case_id": "EXT-02",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "dosage_change"
+      }
+    },
+    {
+      "case_id": "EXT-03",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "monitoring_frequency_change"
+      }
+    },
+    {
+      "case_id": "EXT-04",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "diagnostic_criterion_change"
+      }
+    },
+    {
+      "case_id": "EXT-05",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "safety_warning"
+      }
+    },
+    {
+      "case_id": "EXT-06",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "contraindication"
+      }
+    },
+    {
+      "case_id": "EXT-07",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "population_specific"
+      }
+    },
+    {
+      "case_id": "EXT-08",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "evidence_grade_present"
+      }
+    },
+    {
+      "case_id": "EXT-09",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'impact', status='held'",
+      "expected_behavior": "Stage=impact, Gate=None",
+      "actual_behavior": "Stage=impact, Gate=None",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "impact",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "evidence_grade_missing"
+      }
+    },
+    {
+      "case_id": "EXT-10",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "multiple_recommendations"
+      }
+    },
+    {
+      "case_id": "EXT-11",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "different_section_layouts"
+      }
+    },
+    {
+      "case_id": "EXT-12",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "recommendation_different_page"
+      }
+    },
+    {
+      "case_id": "EXT-13",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "irrelevant_sections_before"
+      }
+    },
+    {
+      "case_id": "EXT-14",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "distracting_clinical_text"
+      }
+    },
+    {
+      "case_id": "EXT-15",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "provenance_edge_case"
+      }
+    },
+    {
+      "case_id": "EXT-16",
+      "suite": "e2e",
+      "outcome": "HELD_EXPECTED",
+      "message": "Pipeline reached stage 'extraction', status='held'",
+      "expected_behavior": "Stage=extraction, Gate=G1",
+      "actual_behavior": "Stage=extraction, Gate=G1",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "extraction",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "ambiguous_recommendation"
+      }
+    },
+    {
+      "case_id": "EXT-17",
+      "suite": "e2e",
+      "outcome": "HELD_EXPECTED",
+      "message": "Pipeline reached stage 'extraction', status='held'",
+      "expected_behavior": "Stage=extraction, Gate=G1",
+      "actual_behavior": "Stage=extraction, Gate=G1",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "extraction",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "low_confidence_g1"
+      }
+    },
+    {
+      "case_id": "EXT-18",
+      "suite": "e2e",
+      "outcome": "HELD_EXPECTED",
+      "message": "Pipeline reached stage 'extraction', status='held'",
+      "expected_behavior": "Stage=extraction, Gate=G1",
+      "actual_behavior": "Stage=extraction, Gate=G1",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "extraction",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "malformed_invalid"
+      }
+    },
+    {
+      "case_id": "EXT-19",
+      "suite": "e2e",
+      "outcome": "HELD_EXPECTED",
+      "message": "Pipeline reached stage 'extraction', status='held'",
+      "expected_behavior": "Stage=extraction, Gate=G1",
+      "actual_behavior": "Stage=extraction, Gate=G1",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "extraction",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "source_quote_mismatch"
+      }
+    },
+    {
+      "case_id": "EXT-20",
+      "suite": "e2e",
+      "outcome": "PASS",
+      "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+      "expected_behavior": "Stage=governance, Gate=None",
+      "actual_behavior": "Stage=governance, Gate=G4",
+      "provenance_valid": true,
+      "metrics": {
+        "current_stage": "governance",
+        "status": "held"
+      },
+      "details": {
+        "condition_type": "multiple_candidate_sections"
+      }
+    }
+  ]
+}

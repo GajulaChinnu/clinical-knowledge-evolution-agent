@@ -1,0 +1,362 @@
+{
+  "suite_name": "Extraction",
+  "total_cases": 20,
+  "passed": 16,
+  "failed": 0,
+  "held_expected": 4,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "total_cases": 20,
+    "successful_extractions": 16,
+    "g1_holds": 4,
+    "exact_match_rate": 1.25,
+    "presence_accuracy": 1.0,
+    "provenance_accuracy": 0.95,
+    "confidence_mean": 0.873,
+    "confidence_min": 0.4,
+    "confidence_max": 0.96
+  },
+  "case_results": [
+    {
+      "case_id": "EXT-01",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.95,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "clear_recommendation",
+        "rationale": "Clear explicit treatment recommendation with high evidence and confidence."
+      }
+    },
+    {
+      "case_id": "EXT-02",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.94,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "dosage_change",
+        "rationale": "Explicit dosage increase compared to baseline institutional protocol (1000mg BID vs 500mg daily)."
+      }
+    },
+    {
+      "case_id": "EXT-03",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.92,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "monitoring_frequency_change",
+        "rationale": "Tightens renal surveillance frequency from annual to semi-annual."
+      }
+    },
+    {
+      "case_id": "EXT-04",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.93,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "diagnostic_criterion_change",
+        "rationale": "Changes diagnostic thresholds downward from standard 126 mg/dL and 6.5%."
+      }
+    },
+    {
+      "case_id": "EXT-05",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.91,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "safety_warning",
+        "rationale": "Acute life-safety notice with critical impact tier requiring rapid 48h turnaround."
+      }
+    },
+    {
+      "case_id": "EXT-06",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.96,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "contraindication",
+        "rationale": "Formal contraindication expanding safety restrictions for radiocontrast."
+      }
+    },
+    {
+      "case_id": "EXT-07",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.9,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "population_specific",
+        "rationale": "Population subgroup stratification tailoring glycemic target."
+      }
+    },
+    {
+      "case_id": "EXT-08",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.94,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "evidence_grade_present",
+        "rationale": "Clear Grade A citation directly in sentence body."
+      }
+    },
+    {
+      "case_id": "EXT-09",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.88,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "evidence_grade_missing",
+        "rationale": "Valid clinical recommendation where evidence grade is unstated; halts at impact stage due to incomplete evidence dimension without guessing tiers."
+      }
+    },
+    {
+      "case_id": "EXT-10",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.95,
+        "extracted_records": 2
+      },
+      "details": {
+        "condition_type": "multiple_recommendations",
+        "rationale": "Verifies extractor isolates multiple distinct recommendations."
+      }
+    },
+    {
+      "case_id": "EXT-11",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.92,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "different_section_layouts",
+        "rationale": "Recommendation nested in non-standard Appendix heading pattern."
+      }
+    },
+    {
+      "case_id": "EXT-12",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.93,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "recommendation_different_page",
+        "rationale": "Verifies multi-page tracking and page provenance attribution (page 2)."
+      }
+    },
+    {
+      "case_id": "EXT-13",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.94,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "irrelevant_sections_before",
+        "rationale": "Proves candidate section filter bypasses background section without recommendations."
+      }
+    },
+    {
+      "case_id": "EXT-14",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.92,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "distracting_clinical_text",
+        "rationale": "Verbatim recommendation isolated accurately amidst non-actionable commentary."
+      }
+    },
+    {
+      "case_id": "EXT-15",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.95,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "provenance_edge_case",
+        "rationale": "Exact match verification retains parentheses and mathematical symbols."
+      }
+    },
+    {
+      "case_id": "EXT-16",
+      "suite": "extraction",
+      "outcome": "HELD_EXPECTED",
+      "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+      "expected_behavior": "held_for_g1",
+      "actual_behavior": "held_for_G1",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.65,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "ambiguous_recommendation",
+        "rationale": "Weak recommendation confidence (0.65 < 0.70 threshold) routes to G1 human review."
+      }
+    },
+    {
+      "case_id": "EXT-17",
+      "suite": "extraction",
+      "outcome": "HELD_EXPECTED",
+      "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+      "expected_behavior": "held_for_g1",
+      "actual_behavior": "held_for_G1",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.58,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "low_confidence_g1",
+        "rationale": "Confidence 0.58 is strictly below production 0.70 threshold, halting at G1."
+      }
+    },
+    {
+      "case_id": "EXT-18",
+      "suite": "extraction",
+      "outcome": "HELD_EXPECTED",
+      "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+      "expected_behavior": "held_for_g1",
+      "actual_behavior": "held_for_G1",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.4,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "malformed_invalid",
+        "rationale": "Produces low-confidence / unparseable extraction held strictly for G1 human review."
+      }
+    },
+    {
+      "case_id": "EXT-19",
+      "suite": "extraction",
+      "outcome": "HELD_EXPECTED",
+      "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+      "expected_behavior": "held_for_g1",
+      "actual_behavior": "held_for_G1",
+      "provenance_valid": false,
+      "metrics": {
+        "confidence": 0.95,
+        "extracted_records": 1
+      },
+      "details": {
+        "condition_type": "source_quote_mismatch",
+        "rationale": "Verbatim quote does not exist in source section text; fails provenance verification and halts at G1."
+      }
+    },
+    {
+      "case_id": "EXT-20",
+      "suite": "extraction",
+      "outcome": "PASS",
+      "message": "Observed status 'extracted' aligns with expected 'extracted'",
+      "expected_behavior": "extracted_successfully",
+      "actual_behavior": "extracted",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.94,
+        "extracted_records": 2
+      },
+      "details": {
+        "condition_type": "multiple_candidate_sections",
+        "rationale": "Verifies candidate section detection and extraction across multiple eligible sections."
+      }
+    }
+  ]
+}

@@ -1,0 +1,1252 @@
+{
+  "timestamp": "2026-10-05T09:27:46.492108+00:00",
+  "execution_mode": "offline",
+  "git_branch": "develop",
+  "total_cases": 71,
+  "total_passed": 58,
+  "total_failed": 0,
+  "total_held_expected": 13,
+  "total_errors": 0,
+  "all_passed": true,
+  "suites": {
+    "briefing": {
+      "suite_name": "Briefing",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "held_expected": 0,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "seven_sections_verified": true,
+        "hash_stability_verified": true
+      },
+      "case_results": [
+        {
+          "case_id": "BRF-01",
+          "suite": "briefing",
+          "outcome": "PASS",
+          "message": "All seven brief sections are strictly complete and non-empty",
+          "expected_behavior": "is_complete=True",
+          "actual_behavior": "is_complete=True",
+          "provenance_valid": true,
+          "metrics": {
+            "sections_present": 7,
+            "missing_count": 0
+          },
+          "details": {}
+        },
+        {
+          "case_id": "BRF-02",
+          "suite": "briefing",
+          "outcome": "PASS",
+          "message": "Verbatim recommendation text is preserved without alteration",
+          "expected_behavior": "Exact verbatim match in source excerpt",
+          "actual_behavior": "Preserved",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "BRF-03",
+          "suite": "briefing",
+          "outcome": "PASS",
+          "message": "Brief rendering is completely deterministic with stable SHA-256 hash",
+          "expected_behavior": "Identical hash on repeated rendering",
+          "actual_behavior": "Hash stable: 64c2d8f3a342...",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        }
+      ]
+    },
+    "comparison": {
+      "suite_name": "Comparison",
+      "total_cases": 16,
+      "passed": 11,
+      "failed": 0,
+      "held_expected": 5,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "total_scenarios": 16,
+        "matched_count": 11,
+        "no_match_count": 2,
+        "g2_holds": 3,
+        "g3_holds": 2,
+        "difference_type_accuracy": 1.0,
+        "precision": 0.75,
+        "recall": 0.75,
+        "f1_score": 0.75,
+        "confidence_mean": 0.8225
+      },
+      "case_results": [
+        {
+          "case_id": "CMP-01",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='no_gap', diff='none'",
+          "expected_behavior": "no_gap (none)",
+          "actual_behavior": "no_gap (none)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.98,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "exact_match",
+            "rationale": "Identical wording matches institutional protocol exactly with no gap."
+          }
+        },
+        {
+          "case_id": "CMP-02",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='no_gap', diff='no_material_difference'",
+          "expected_behavior": "no_gap (no_material_difference)",
+          "actual_behavior": "no_gap (no_material_difference)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.94,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "wording_variation",
+            "rationale": "Paraphrased syntax representing clinically identical instruction."
+          }
+        },
+        {
+          "case_id": "CMP-03",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='dosage_change'",
+          "expected_behavior": "gap (dosage_change)",
+          "actual_behavior": "gap (dosage_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.95,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "dosage_change",
+            "rationale": "Material dosing escalation from 500mg once daily to 1000mg twice daily."
+          }
+        },
+        {
+          "case_id": "CMP-04",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='frequency_change'",
+          "expected_behavior": "gap (frequency_change)",
+          "actual_behavior": "gap (frequency_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.92,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "frequency_change",
+            "rationale": "Annual eGFR requirement accelerated to semi-annual monitoring."
+          }
+        },
+        {
+          "case_id": "CMP-05",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='population_restriction'",
+          "expected_behavior": "gap (population_restriction)",
+          "actual_behavior": "gap (population_restriction)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.91,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "population_change",
+            "rationale": "Restricts broadly indicated population to patients under 65."
+          }
+        },
+        {
+          "case_id": "CMP-06",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='contraindication'",
+          "expected_behavior": "gap (contraindication)",
+          "actual_behavior": "gap (contraindication)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.96,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "contraindication",
+            "rationale": "Introduces new radiocontrast safety restriction not in existing protocol."
+          }
+        },
+        {
+          "case_id": "CMP-07",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='other_supported_change'",
+          "expected_behavior": "gap (other_supported_change)",
+          "actual_behavior": "gap (other_supported_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.89,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "workflow_difference",
+            "rationale": "Mandates prerequisite pharmacist workflow prior to dispensing."
+          }
+        },
+        {
+          "case_id": "CMP-08",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='no_gap', diff='none'",
+          "expected_behavior": "no_gap (none)",
+          "actual_behavior": "no_gap (none)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.97,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "no_gap",
+            "rationale": "Directly corroborates existing institutional glycemic target."
+          }
+        },
+        {
+          "case_id": "CMP-09",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='dosage_change'",
+          "expected_behavior": "gap (dosage_change)",
+          "actual_behavior": "gap (dosage_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.9,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "multiple_candidates",
+            "rationale": "Matches multiple candidate sections (SEC-2 and SEC-3); best candidate SEC-2 correctly chosen."
+          }
+        },
+        {
+          "case_id": "CMP-10",
+          "suite": "comparison",
+          "outcome": "HELD_EXPECTED",
+          "message": "Comparison confirmed: result='ambiguous', diff='none'",
+          "expected_behavior": "ambiguous (none)",
+          "actual_behavior": "ambiguous (none)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.5,
+            "similarity": 0.92,
+            "gap_status": "review_required"
+          },
+          "details": {
+            "condition_type": "ambiguous",
+            "rationale": "Equivocal clinical instruction creates ambiguous comparison routing to G2."
+          }
+        },
+        {
+          "case_id": "CMP-11",
+          "suite": "comparison",
+          "outcome": "HELD_EXPECTED",
+          "message": "Comparison confirmed: result='no_gap', diff='dosage_change'",
+          "expected_behavior": "no_gap (dosage_change)",
+          "actual_behavior": "no_gap (dosage_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.6,
+            "similarity": 0.92,
+            "gap_status": "review_required"
+          },
+          "details": {
+            "condition_type": "contradiction",
+            "rationale": "Contradictory output (no_gap with dosage_change) is intercepted and routed to G2."
+          }
+        },
+        {
+          "case_id": "CMP-12",
+          "suite": "comparison",
+          "outcome": "HELD_EXPECTED",
+          "message": "Comparison confirmed: result='ambiguous', diff='none'",
+          "expected_behavior": "ambiguous (none)",
+          "actual_behavior": "ambiguous (none)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.0,
+            "similarity": 0.92,
+            "gap_status": "review_required"
+          },
+          "details": {
+            "condition_type": "invalid",
+            "rationale": "Model failure or unparseable JSON safely caught and routed to G2."
+          }
+        },
+        {
+          "case_id": "CMP-13",
+          "suite": "comparison",
+          "outcome": "HELD_EXPECTED",
+          "message": "Comparison confirmed: result='no_match', diff='no_match'",
+          "expected_behavior": "no_match (no_match)",
+          "actual_behavior": "no_match (no_match)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 1.0,
+            "similarity": 0.0,
+            "gap_status": "no_match"
+          },
+          "details": {
+            "condition_type": "no_match_g3",
+            "rationale": "Oncology recommendation has no semantic match in diabetes protocol (< 0.70 similarity) -> G3."
+          }
+        },
+        {
+          "case_id": "CMP-14",
+          "suite": "comparison",
+          "outcome": "HELD_EXPECTED",
+          "message": "Comparison confirmed: result='no_match', diff='no_match'",
+          "expected_behavior": "no_match (no_match)",
+          "actual_behavior": "no_match (no_match)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 1.0,
+            "similarity": 0.0,
+            "gap_status": "no_match"
+          },
+          "details": {
+            "condition_type": "low_similarity_no_match",
+            "rationale": "Respiratory therapy has distant semantic similarity (< 0.40) -> G3."
+          }
+        },
+        {
+          "case_id": "CMP-15",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='other_supported_change'",
+          "expected_behavior": "gap (other_supported_change)",
+          "actual_behavior": "gap (other_supported_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.93,
+            "similarity": 0.92,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "protocol_version_difference",
+            "rationale": "Verifies historical protocol version v2.0 attribution and provenance tracking."
+          }
+        },
+        {
+          "case_id": "CMP-16",
+          "suite": "comparison",
+          "outcome": "PASS",
+          "message": "Comparison confirmed: result='gap', diff='threshold_change'",
+          "expected_behavior": "gap (threshold_change)",
+          "actual_behavior": "gap (threshold_change)",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.71,
+            "similarity": 0.71,
+            "gap_status": "matched"
+          },
+          "details": {
+            "condition_type": "threshold_boundary",
+            "rationale": "Score sits near 0.70 boundary (0.71) for empirical calibration observation."
+          }
+        }
+      ]
+    },
+    "e2e": {
+      "suite_name": "End-to-End Pipeline",
+      "total_cases": 20,
+      "passed": 16,
+      "failed": 0,
+      "held_expected": 4,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "total_documents": 20,
+        "passed_to_governance": 16,
+        "held_at_human_gates": 4,
+        "failed": 0,
+        "zero_auto_decisions_verified": true
+      },
+      "case_results": [
+        {
+          "case_id": "EXT-01",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "clear_recommendation"
+          }
+        },
+        {
+          "case_id": "EXT-02",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "dosage_change"
+          }
+        },
+        {
+          "case_id": "EXT-03",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "monitoring_frequency_change"
+          }
+        },
+        {
+          "case_id": "EXT-04",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "diagnostic_criterion_change"
+          }
+        },
+        {
+          "case_id": "EXT-05",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "safety_warning"
+          }
+        },
+        {
+          "case_id": "EXT-06",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "contraindication"
+          }
+        },
+        {
+          "case_id": "EXT-07",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "population_specific"
+          }
+        },
+        {
+          "case_id": "EXT-08",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "evidence_grade_present"
+          }
+        },
+        {
+          "case_id": "EXT-09",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'impact', status='held'",
+          "expected_behavior": "Stage=impact, Gate=None",
+          "actual_behavior": "Stage=impact, Gate=None",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "impact",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "evidence_grade_missing"
+          }
+        },
+        {
+          "case_id": "EXT-10",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "multiple_recommendations"
+          }
+        },
+        {
+          "case_id": "EXT-11",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "different_section_layouts"
+          }
+        },
+        {
+          "case_id": "EXT-12",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "recommendation_different_page"
+          }
+        },
+        {
+          "case_id": "EXT-13",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "irrelevant_sections_before"
+          }
+        },
+        {
+          "case_id": "EXT-14",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "distracting_clinical_text"
+          }
+        },
+        {
+          "case_id": "EXT-15",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "provenance_edge_case"
+          }
+        },
+        {
+          "case_id": "EXT-16",
+          "suite": "e2e",
+          "outcome": "HELD_EXPECTED",
+          "message": "Pipeline reached stage 'extraction', status='held'",
+          "expected_behavior": "Stage=extraction, Gate=G1",
+          "actual_behavior": "Stage=extraction, Gate=G1",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "extraction",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "ambiguous_recommendation"
+          }
+        },
+        {
+          "case_id": "EXT-17",
+          "suite": "e2e",
+          "outcome": "HELD_EXPECTED",
+          "message": "Pipeline reached stage 'extraction', status='held'",
+          "expected_behavior": "Stage=extraction, Gate=G1",
+          "actual_behavior": "Stage=extraction, Gate=G1",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "extraction",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "low_confidence_g1"
+          }
+        },
+        {
+          "case_id": "EXT-18",
+          "suite": "e2e",
+          "outcome": "HELD_EXPECTED",
+          "message": "Pipeline reached stage 'extraction', status='held'",
+          "expected_behavior": "Stage=extraction, Gate=G1",
+          "actual_behavior": "Stage=extraction, Gate=G1",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "extraction",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "malformed_invalid"
+          }
+        },
+        {
+          "case_id": "EXT-19",
+          "suite": "e2e",
+          "outcome": "HELD_EXPECTED",
+          "message": "Pipeline reached stage 'extraction', status='held'",
+          "expected_behavior": "Stage=extraction, Gate=G1",
+          "actual_behavior": "Stage=extraction, Gate=G1",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "extraction",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "source_quote_mismatch"
+          }
+        },
+        {
+          "case_id": "EXT-20",
+          "suite": "e2e",
+          "outcome": "PASS",
+          "message": "Pipeline reached stage 'governance', held at G4 for human committee review.",
+          "expected_behavior": "Stage=governance, Gate=None",
+          "actual_behavior": "Stage=governance, Gate=G4",
+          "provenance_valid": true,
+          "metrics": {
+            "current_stage": "governance",
+            "status": "held"
+          },
+          "details": {
+            "condition_type": "multiple_candidate_sections"
+          }
+        }
+      ]
+    },
+    "extraction": {
+      "suite_name": "Extraction",
+      "total_cases": 20,
+      "passed": 16,
+      "failed": 0,
+      "held_expected": 4,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "total_cases": 20,
+        "successful_extractions": 16,
+        "g1_holds": 4,
+        "exact_match_rate": 1.25,
+        "presence_accuracy": 1.0,
+        "provenance_accuracy": 0.95,
+        "confidence_mean": 0.873,
+        "confidence_min": 0.4,
+        "confidence_max": 0.96
+      },
+      "case_results": [
+        {
+          "case_id": "EXT-01",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.95,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "clear_recommendation",
+            "rationale": "Clear explicit treatment recommendation with high evidence and confidence."
+          }
+        },
+        {
+          "case_id": "EXT-02",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.94,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "dosage_change",
+            "rationale": "Explicit dosage increase compared to baseline institutional protocol (1000mg BID vs 500mg daily)."
+          }
+        },
+        {
+          "case_id": "EXT-03",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.92,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "monitoring_frequency_change",
+            "rationale": "Tightens renal surveillance frequency from annual to semi-annual."
+          }
+        },
+        {
+          "case_id": "EXT-04",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.93,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "diagnostic_criterion_change",
+            "rationale": "Changes diagnostic thresholds downward from standard 126 mg/dL and 6.5%."
+          }
+        },
+        {
+          "case_id": "EXT-05",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.91,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "safety_warning",
+            "rationale": "Acute life-safety notice with critical impact tier requiring rapid 48h turnaround."
+          }
+        },
+        {
+          "case_id": "EXT-06",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.96,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "contraindication",
+            "rationale": "Formal contraindication expanding safety restrictions for radiocontrast."
+          }
+        },
+        {
+          "case_id": "EXT-07",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.9,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "population_specific",
+            "rationale": "Population subgroup stratification tailoring glycemic target."
+          }
+        },
+        {
+          "case_id": "EXT-08",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.94,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "evidence_grade_present",
+            "rationale": "Clear Grade A citation directly in sentence body."
+          }
+        },
+        {
+          "case_id": "EXT-09",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.88,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "evidence_grade_missing",
+            "rationale": "Valid clinical recommendation where evidence grade is unstated; halts at impact stage due to incomplete evidence dimension without guessing tiers."
+          }
+        },
+        {
+          "case_id": "EXT-10",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.95,
+            "extracted_records": 2
+          },
+          "details": {
+            "condition_type": "multiple_recommendations",
+            "rationale": "Verifies extractor isolates multiple distinct recommendations."
+          }
+        },
+        {
+          "case_id": "EXT-11",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.92,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "different_section_layouts",
+            "rationale": "Recommendation nested in non-standard Appendix heading pattern."
+          }
+        },
+        {
+          "case_id": "EXT-12",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.93,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "recommendation_different_page",
+            "rationale": "Verifies multi-page tracking and page provenance attribution (page 2)."
+          }
+        },
+        {
+          "case_id": "EXT-13",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.94,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "irrelevant_sections_before",
+            "rationale": "Proves candidate section filter bypasses background section without recommendations."
+          }
+        },
+        {
+          "case_id": "EXT-14",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.92,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "distracting_clinical_text",
+            "rationale": "Verbatim recommendation isolated accurately amidst non-actionable commentary."
+          }
+        },
+        {
+          "case_id": "EXT-15",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.95,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "provenance_edge_case",
+            "rationale": "Exact match verification retains parentheses and mathematical symbols."
+          }
+        },
+        {
+          "case_id": "EXT-16",
+          "suite": "extraction",
+          "outcome": "HELD_EXPECTED",
+          "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+          "expected_behavior": "held_for_g1",
+          "actual_behavior": "held_for_G1",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.65,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "ambiguous_recommendation",
+            "rationale": "Weak recommendation confidence (0.65 < 0.70 threshold) routes to G1 human review."
+          }
+        },
+        {
+          "case_id": "EXT-17",
+          "suite": "extraction",
+          "outcome": "HELD_EXPECTED",
+          "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+          "expected_behavior": "held_for_g1",
+          "actual_behavior": "held_for_G1",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.58,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "low_confidence_g1",
+            "rationale": "Confidence 0.58 is strictly below production 0.70 threshold, halting at G1."
+          }
+        },
+        {
+          "case_id": "EXT-18",
+          "suite": "extraction",
+          "outcome": "HELD_EXPECTED",
+          "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+          "expected_behavior": "held_for_g1",
+          "actual_behavior": "held_for_G1",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.4,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "malformed_invalid",
+            "rationale": "Produces low-confidence / unparseable extraction held strictly for G1 human review."
+          }
+        },
+        {
+          "case_id": "EXT-19",
+          "suite": "extraction",
+          "outcome": "HELD_EXPECTED",
+          "message": "Observed status 'held_for_G1' aligns with expected 'held_for_G1'",
+          "expected_behavior": "held_for_g1",
+          "actual_behavior": "held_for_G1",
+          "provenance_valid": false,
+          "metrics": {
+            "confidence": 0.95,
+            "extracted_records": 1
+          },
+          "details": {
+            "condition_type": "source_quote_mismatch",
+            "rationale": "Verbatim quote does not exist in source section text; fails provenance verification and halts at G1."
+          }
+        },
+        {
+          "case_id": "EXT-20",
+          "suite": "extraction",
+          "outcome": "PASS",
+          "message": "Observed status 'extracted' aligns with expected 'extracted'",
+          "expected_behavior": "extracted_successfully",
+          "actual_behavior": "extracted",
+          "provenance_valid": true,
+          "metrics": {
+            "confidence": 0.94,
+            "extracted_records": 2
+          },
+          "details": {
+            "condition_type": "multiple_candidate_sections",
+            "rationale": "Verifies candidate section detection and extraction across multiple eligible sections."
+          }
+        }
+      ]
+    },
+    "governance": {
+      "suite_name": "Governance Safety",
+      "total_cases": 6,
+      "passed": 6,
+      "failed": 0,
+      "held_expected": 0,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "safety_assertions_verified": 6,
+        "violations_detected": 0
+      },
+      "case_results": [
+        {
+          "case_id": "GOV-G1",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "G1 review gate holds low-confidence or provenance-failing extractions without advancing.",
+          "expected_behavior": "HELD_FOR_G1 halts pipeline",
+          "actual_behavior": "Enforced by ExtractionAgent and Pipeline",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "GOV-G2",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "G2 review gate holds ambiguous or contradictory comparisons without advancing.",
+          "expected_behavior": "HELD_FOR_G2 halts pipeline",
+          "actual_behavior": "Enforced by ComparisonAgent and Pipeline",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "GOV-G3",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "G3 gate routes confirmed no-match to committee rather than dropping or auto-resolving.",
+          "expected_behavior": "HELD_FOR_G3 preserves no-match for human review",
+          "actual_behavior": "Enforced by ComparisonAgent and Pipeline",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "GOV-G4",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "G4 strictly enforces human gate; system cannot auto-decide or close briefs.",
+          "expected_behavior": "Unauthorized / invalid decision blocked",
+          "actual_behavior": "Blocked",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "GOV-G5",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "G5 SLA escalation triggers notifications only; brief decision remains unset.",
+          "expected_behavior": "Decision remains None upon SLA breach",
+          "actual_behavior": "Enforced in Phase 9 G5 and Phase 11 Scheduler",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        },
+        {
+          "case_id": "GOV-FORBIDDEN",
+          "suite": "governance",
+          "outcome": "PASS",
+          "message": "Zero automated approvals, rejections, defers, closures, or protocol mutations detected.",
+          "expected_behavior": "Zero forbidden automated actions",
+          "actual_behavior": "Zero violations observed",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        }
+      ]
+    },
+    "impact": {
+      "suite_name": "Impact",
+      "total_cases": 6,
+      "passed": 6,
+      "failed": 0,
+      "held_expected": 0,
+      "errors": 0,
+      "not_run": 0,
+      "metrics": {
+        "rule_version": "1.0",
+        "immutability_enforced": true
+      },
+      "case_results": [
+        {
+          "case_id": "IMP-01",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Score=14, Tier=Critical, SLA=48h",
+          "expected_behavior": "Tier=ImpactTier.CRITICAL, SLA_hours=48",
+          "actual_behavior": "Tier=ImpactTier.CRITICAL, SLA_hours=48",
+          "provenance_valid": true,
+          "metrics": {
+            "total_score": 14,
+            "is_complete": true
+          },
+          "details": {}
+        },
+        {
+          "case_id": "IMP-02",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Score=9, Tier=High, SLA=168h",
+          "expected_behavior": "Tier=ImpactTier.HIGH, SLA_hours=168",
+          "actual_behavior": "Tier=ImpactTier.HIGH, SLA_hours=168",
+          "provenance_valid": true,
+          "metrics": {
+            "total_score": 9,
+            "is_complete": true
+          },
+          "details": {}
+        },
+        {
+          "case_id": "IMP-03",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Score=6, Tier=Standard, SLA=720h",
+          "expected_behavior": "Tier=ImpactTier.STANDARD, SLA_hours=720",
+          "actual_behavior": "Tier=ImpactTier.STANDARD, SLA_hours=720",
+          "provenance_valid": true,
+          "metrics": {
+            "total_score": 6,
+            "is_complete": true
+          },
+          "details": {}
+        },
+        {
+          "case_id": "IMP-04",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Score=3, Tier=Low, SLA=2160h",
+          "expected_behavior": "Tier=ImpactTier.LOW, SLA_hours=2160",
+          "actual_behavior": "Tier=ImpactTier.LOW, SLA_hours=2160",
+          "provenance_valid": true,
+          "metrics": {
+            "total_score": 3,
+            "is_complete": true
+          },
+          "details": {}
+        },
+        {
+          "case_id": "IMP-05",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Incomplete score correctly un-tiered: complete=False",
+          "expected_behavior": "Tier=None, SLA_hours=None",
+          "actual_behavior": "Tier=None, SLA_hours=None",
+          "provenance_valid": true,
+          "metrics": {
+            "total_score": null,
+            "is_complete": false
+          },
+          "details": {}
+        },
+        {
+          "case_id": "IMP-06",
+          "suite": "impact",
+          "outcome": "PASS",
+          "message": "Automatic tier downgrade was successfully blocked",
+          "expected_behavior": "TierDowngradeBlockedError",
+          "actual_behavior": "Blocked",
+          "provenance_valid": true,
+          "metrics": {},
+          "details": {}
+        }
+      ]
+    }
+  }
+}

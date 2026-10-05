@@ -70,6 +70,14 @@ from app.schemas.governance import (
     UnauthorizedReviewerError,
 )
 from app.schemas.scheduler import SLACycleSummary
+from app.schemas.evaluation import (
+    EvaluationCaseResult,
+    EvaluationOutcome,
+    EvaluationSummaryReport,
+    SuiteSummary,
+    ThresholdCalibrationCase,
+    ThresholdCalibrationReport,
+)
 from app.schemas.impact import (
     DimensionScore,
     ImpactRecordBase,
@@ -187,4 +195,11 @@ __all__ = [
     "G3ResolutionRequest",
     # Scheduler (Phase 11)
     "SLACycleSummary",
+    # Evaluation (Phase 12)
+    "EvaluationOutcome",
+    "EvaluationCaseResult",
+    "SuiteSummary",
+    "ThresholdCalibrationCase",
+    "ThresholdCalibrationReport",
+    "EvaluationSummaryReport",
 ]

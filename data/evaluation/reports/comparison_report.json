@@ -1,0 +1,311 @@
+{
+  "suite_name": "Comparison",
+  "total_cases": 16,
+  "passed": 11,
+  "failed": 0,
+  "held_expected": 5,
+  "errors": 0,
+  "not_run": 0,
+  "metrics": {
+    "total_scenarios": 16,
+    "matched_count": 11,
+    "no_match_count": 2,
+    "g2_holds": 3,
+    "g3_holds": 2,
+    "difference_type_accuracy": 1.0,
+    "precision": 0.75,
+    "recall": 0.75,
+    "f1_score": 0.75,
+    "confidence_mean": 0.8225
+  },
+  "case_results": [
+    {
+      "case_id": "CMP-01",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='no_gap', diff='none'",
+      "expected_behavior": "no_gap (none)",
+      "actual_behavior": "no_gap (none)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.98,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "exact_match",
+        "rationale": "Identical wording matches institutional protocol exactly with no gap."
+      }
+    },
+    {
+      "case_id": "CMP-02",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='no_gap', diff='no_material_difference'",
+      "expected_behavior": "no_gap (no_material_difference)",
+      "actual_behavior": "no_gap (no_material_difference)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.94,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "wording_variation",
+        "rationale": "Paraphrased syntax representing clinically identical instruction."
+      }
+    },
+    {
+      "case_id": "CMP-03",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='dosage_change'",
+      "expected_behavior": "gap (dosage_change)",
+      "actual_behavior": "gap (dosage_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.95,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "dosage_change",
+        "rationale": "Material dosing escalation from 500mg once daily to 1000mg twice daily."
+      }
+    },
+    {
+      "case_id": "CMP-04",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='frequency_change'",
+      "expected_behavior": "gap (frequency_change)",
+      "actual_behavior": "gap (frequency_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.92,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "frequency_change",
+        "rationale": "Annual eGFR requirement accelerated to semi-annual monitoring."
+      }
+    },
+    {
+      "case_id": "CMP-05",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='population_restriction'",
+      "expected_behavior": "gap (population_restriction)",
+      "actual_behavior": "gap (population_restriction)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.91,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "population_change",
+        "rationale": "Restricts broadly indicated population to patients under 65."
+      }
+    },
+    {
+      "case_id": "CMP-06",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='contraindication'",
+      "expected_behavior": "gap (contraindication)",
+      "actual_behavior": "gap (contraindication)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.96,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "contraindication",
+        "rationale": "Introduces new radiocontrast safety restriction not in existing protocol."
+      }
+    },
+    {
+      "case_id": "CMP-07",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='other_supported_change'",
+      "expected_behavior": "gap (other_supported_change)",
+      "actual_behavior": "gap (other_supported_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.89,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "workflow_difference",
+        "rationale": "Mandates prerequisite pharmacist workflow prior to dispensing."
+      }
+    },
+    {
+      "case_id": "CMP-08",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='no_gap', diff='none'",
+      "expected_behavior": "no_gap (none)",
+      "actual_behavior": "no_gap (none)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.97,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "no_gap",
+        "rationale": "Directly corroborates existing institutional glycemic target."
+      }
+    },
+    {
+      "case_id": "CMP-09",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='dosage_change'",
+      "expected_behavior": "gap (dosage_change)",
+      "actual_behavior": "gap (dosage_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.9,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "multiple_candidates",
+        "rationale": "Matches multiple candidate sections (SEC-2 and SEC-3); best candidate SEC-2 correctly chosen."
+      }
+    },
+    {
+      "case_id": "CMP-10",
+      "suite": "comparison",
+      "outcome": "HELD_EXPECTED",
+      "message": "Comparison confirmed: result='ambiguous', diff='none'",
+      "expected_behavior": "ambiguous (none)",
+      "actual_behavior": "ambiguous (none)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.5,
+        "similarity": 0.92,
+        "gap_status": "review_required"
+      },
+      "details": {
+        "condition_type": "ambiguous",
+        "rationale": "Equivocal clinical instruction creates ambiguous comparison routing to G2."
+      }
+    },
+    {
+      "case_id": "CMP-11",
+      "suite": "comparison",
+      "outcome": "HELD_EXPECTED",
+      "message": "Comparison confirmed: result='no_gap', diff='dosage_change'",
+      "expected_behavior": "no_gap (dosage_change)",
+      "actual_behavior": "no_gap (dosage_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.6,
+        "similarity": 0.92,
+        "gap_status": "review_required"
+      },
+      "details": {
+        "condition_type": "contradiction",
+        "rationale": "Contradictory output (no_gap with dosage_change) is intercepted and routed to G2."
+      }
+    },
+    {
+      "case_id": "CMP-12",
+      "suite": "comparison",
+      "outcome": "HELD_EXPECTED",
+      "message": "Comparison confirmed: result='ambiguous', diff='none'",
+      "expected_behavior": "ambiguous (none)",
+      "actual_behavior": "ambiguous (none)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.0,
+        "similarity": 0.92,
+        "gap_status": "review_required"
+      },
+      "details": {
+        "condition_type": "invalid",
+        "rationale": "Model failure or unparseable JSON safely caught and routed to G2."
+      }
+    },
+    {
+      "case_id": "CMP-13",
+      "suite": "comparison",
+      "outcome": "HELD_EXPECTED",
+      "message": "Comparison confirmed: result='no_match', diff='no_match'",
+      "expected_behavior": "no_match (no_match)",
+      "actual_behavior": "no_match (no_match)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 1.0,
+        "similarity": 0.0,
+        "gap_status": "no_match"
+      },
+      "details": {
+        "condition_type": "no_match_g3",
+        "rationale": "Oncology recommendation has no semantic match in diabetes protocol (< 0.70 similarity) -> G3."
+      }
+    },
+    {
+      "case_id": "CMP-14",
+      "suite": "comparison",
+      "outcome": "HELD_EXPECTED",
+      "message": "Comparison confirmed: result='no_match', diff='no_match'",
+      "expected_behavior": "no_match (no_match)",
+      "actual_behavior": "no_match (no_match)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 1.0,
+        "similarity": 0.0,
+        "gap_status": "no_match"
+      },
+      "details": {
+        "condition_type": "low_similarity_no_match",
+        "rationale": "Respiratory therapy has distant semantic similarity (< 0.40) -> G3."
+      }
+    },
+    {
+      "case_id": "CMP-15",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='other_supported_change'",
+      "expected_behavior": "gap (other_supported_change)",
+      "actual_behavior": "gap (other_supported_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.93,
+        "similarity": 0.92,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "protocol_version_difference",
+        "rationale": "Verifies historical protocol version v2.0 attribution and provenance tracking."
+      }
+    },
+    {
+      "case_id": "CMP-16",
+      "suite": "comparison",
+      "outcome": "PASS",
+      "message": "Comparison confirmed: result='gap', diff='threshold_change'",
+      "expected_behavior": "gap (threshold_change)",
+      "actual_behavior": "gap (threshold_change)",
+      "provenance_valid": true,
+      "metrics": {
+        "confidence": 0.71,
+        "similarity": 0.71,
+        "gap_status": "matched"
+      },
+      "details": {
+        "condition_type": "threshold_boundary",
+        "rationale": "Score sits near 0.70 boundary (0.71) for empirical calibration observation."
+      }
+    }
+  ]
+}
