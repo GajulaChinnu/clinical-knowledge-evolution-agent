@@ -74,7 +74,8 @@ AUTHORIZED_REVIEWERS = [
 def get_db_session_factory(config: Optional[AppConfig] = None) -> sessionmaker[Session]:
     """Retrieve session factory using application configuration."""
     cfg = config or load_config()
-    return get_session_factory(db_url=cfg.database_url)
+    engine = get_engine(db_url=cfg.database_url)
+    return get_session_factory(engine=engine)
 
 
 def get_dashboard_metrics(session_factory: sessionmaker[Session]) -> Dict[str, Any]:
