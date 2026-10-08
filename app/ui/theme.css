@@ -1,0 +1,260 @@
+/* Modern Enterprise SaaS Styling & Design Tokens */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Main Container Spacing */
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 2.5rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 1440px !important;
+}
+
+/* Sidebar Styling & Fix for Dark Mode Text Invisible Issue */
+[data-testid="stSidebar"] {
+    background-color: #f8fafc !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+/* Hide Streamlit Header to remove the top white strip */
+[data-testid="stHeader"] {
+    display: none !important;
+    height: 0 !important;
+}
+
+[data-testid="stSidebar"] .block-container {
+    padding-top: 1.25rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+/* Ensure text is always dark on the light sidebar background */
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
+    color: #1e293b !important;
+}
+
+/* Sidebar Navigation Styling (Overrides Streamlit Radio) */
+[data-testid="stSidebar"] .stRadio > div[role="radiogroup"] {
+    gap: 0.15rem;
+}
+[data-testid="stSidebar"] .stRadio label {
+    background-color: transparent;
+    padding: 0.45rem 0.75rem !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out;
+}
+[data-testid="stSidebar"] .stRadio label:hover {
+    background-color: #e2e8f0 !important;
+}
+/* Hide the default radio circle */
+[data-testid="stSidebar"] .stRadio span[data-baseweb="radio"] div {
+    display: none !important;
+}
+/* Active state styling using :has() selector */
+[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+    background-color: #e0e7ff !important;
+    border-left: 4px solid #2563eb !important;
+    padding-left: calc(0.75rem - 4px) !important;
+}
+[data-testid="stSidebar"] .stRadio label:has(input:checked) p {
+    color: #1e40af !important;
+    font-weight: 700 !important;
+}
+[data-testid="stSidebar"] .stRadio label p {
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+}
+
+/* Typography Hierarchy */
+.page-breadcrumb {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.1rem;
+}
+.page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+    margin: 0 0 0.2rem 0;
+}
+.page-description {
+    font-size: 0.85rem;
+    color: #475569;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+/* Compact Governance Notice Strip */
+.gov-notice-strip {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+.gov-notice-strip strong {
+    color: #0f172a;
+}
+
+/* Enterprise Metric Tiles */
+.ent-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    margin-bottom: 0.75rem;
+}
+.ent-card-urgent {
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    border-left: 4px solid #e53e3e;
+}
+.ent-card-warning {
+    background: #fffaf0;
+    border: 1px solid #feebc8;
+    border-left: 4px solid #dd6b20;
+}
+.ent-card-info {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #3182ce;
+}
+.ent-metric-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+.ent-metric-val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+.ent-metric-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+
+/* Badges */
+.badge-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.badge-neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.badge-blue { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.badge-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.badge-green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+/* Lineage Flow Box */
+.lineage-flow-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Compact Expander */
+div[data-testid="stExpander"] {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+    margin-bottom: 0.65rem !important;
+}
+div[data-testid="stExpander"] details summary p {
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    color: #1e293b !important;
+}
+
+/* Tighten button padding */
+button[kind="primary"] {
+    background-color: #1e40af !important;
+    border-color: #1e40af !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+}
+
+/* Clean up markdown spacing */
+p {
+    margin-bottom: 0.4rem !important;
+}
+
+/* Heading scale: Streamlit's own h1-h4 rules out-rank plain class selectors */
+[data-testid="stMarkdownContainer"] h1.page-title {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    margin: 0 0 0.15rem 0 !important;
+    line-height: 1.25 !important;
+}
+.main [data-testid="stMarkdownContainer"] h3,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h3 {
+    font-size: 1rem !important;
+    font-weight: 650 !important;
+    padding: 0.5rem 0 0.25rem 0 !important;
+    color: #0f172a !important;
+}
+.main [data-testid="stMarkdownContainer"] h4,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h4 {
+    font-size: 0.9rem !important;
+    font-weight: 650 !important;
+    padding: 0.4rem 0 0.2rem 0 !important;
+    color: #1e293b !important;
+}
+hr { margin: 0.75rem 0 !important; }
+
+/* Compact sidebar header (removes the large blank band above the product name) */
+[data-testid="stSidebarHeader"] {
+    height: 2rem !important;
+    min-height: 2rem !important;
+    padding: 0.25rem 0.75rem !important;
+}
+[data-testid="stSidebarUserContent"] { padding-top: 0.25rem !important; }
+[data-testid="stSidebar"] .stRadio label p { font-size: 0.88rem !important; }
+
+/* Main column: start content near the top */
+[data-testid="stMainBlockContainer"], .block-container { padding-top: 1.25rem !important; }
+
+/* Compact metrics (Streamlit default is ~2.25rem) */
+[data-testid="stMetricValue"] {
+    font-size: 1.15rem !important;
+    font-weight: 650 !important;
+    line-height: 1.3 !important;
+}
+[data-testid="stMetricLabel"] p {
+    font-size: 0.72rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b !important;
+}

@@ -1,0 +1,16 @@
+# The enterprise stylesheet (app/ui) is designed for the light theme only; pinning it
+# avoids mixed light-card / dark-page contrast when the OS prefers dark mode.
+[theme]
+base = "light"
+primaryColor = "#1e40af"
+
+[server]
+# Local by default; set explicitly when deploying behind a reverse proxy.
+address = "127.0.0.1"
+# The source watcher walks every lazily-imported transformers submodule on each rerun,
+# logging ~1k ModuleNotFoundError tracebacks and slowing pages. Use `--server.fileWatcherType auto`
+# when actively editing the UI.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

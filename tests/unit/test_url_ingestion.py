@@ -908,13 +908,13 @@ def test_chroma_protocol_collection_unchanged(isolated_env):
 # ==============================================================================
 
 def test_no_llm_calls_from_ui_or_ingestion_layer():
+    import app.services.source_ingestion_service as ingest_mod
     import app.services.url_ingestion_service as url_mod
-    import app.ui.streamlit_app as ui_mod
 
-    url_source = inspect.getsource(url_mod)
-    ui_source = inspect.getsource(ui_mod)
+    sources = [inspect.getsource(url_mod), inspect.getsource(ingest_mod)]
+    sources += [f.read_text(encoding="utf-8") for f in Path("app/ui").rglob("*.py")]
 
-    for src in (url_source, ui_source):
+    for src in sources:
         assert "Groq(" not in src
         assert "OpenAI(" not in src
         assert "import groq" not in src
@@ -979,7 +979,7 @@ def test_handle_source_url_upload_challenge_blocked_state(isolated_env):
 
 def test_render_upload_result_card_blocked_state_no_nameerror():
     # Verify that rendering the blocked state does not raise a NameError for input_type
-    with patch("app.ui.streamlit_app.st") as mock_st:
+    with patch("app.ui.components.st") as mock_st:
         res = {
             "success": False,
             "usable_clinical_content": False,

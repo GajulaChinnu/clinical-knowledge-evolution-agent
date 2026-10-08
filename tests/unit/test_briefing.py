@@ -870,7 +870,7 @@ def test_ui_renders_real_brief_payload_evidence(briefing_env):
     )
     payload = briefing_env["agent"].process_impact_record(impact_id).structured_payload
 
-    with patch("app.ui.streamlit_app.st") as mock_st:
+    with patch("app.ui.components.st") as mock_st:
         mock_st.expander.return_value = MagicMock()
         render_brief_sections(payload)
         shown = " ".join(

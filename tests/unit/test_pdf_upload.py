@@ -53,12 +53,11 @@ from app.schemas.orchestration import (
 from app.services.config_service import AppConfig, load_config
 from app.services.evaluation_corpus import make_multipage_pdf_bytes
 from app.services.file_hash import compute_sha256
+from app.services.source_ingestion_service import sanitize_filename, save_uploaded_pdf
 from app.ui.streamlit_app import (
     get_source_documents,
     handle_source_pdf_upload,
     render_upload_result_card,
-    sanitize_filename,
-    save_uploaded_pdf,
 )
 
 
@@ -649,9 +648,7 @@ def test_data_chroma_not_modified(isolated_env):
 
 def test_streamlit_ui_adds_no_llm_calls():
     """Verify Streamlit UI contains zero LLM client instantiation or API calls."""
-    import app.ui.streamlit_app as ui_module
-
-    source_code = inspect.getsource(ui_module)
+    source_code = "\n".join(f.read_text(encoding="utf-8") for f in Path("app/ui").rglob("*.py"))
 
     # UI must not instantiate or directly import Groq client or OpenAI client
     assert "Groq(" not in source_code

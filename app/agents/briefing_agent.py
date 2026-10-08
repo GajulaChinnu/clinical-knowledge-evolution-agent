@@ -36,7 +36,7 @@ from app.schemas.gaps import ComparisonResult, DifferenceType
 from app.schemas.impact import ImpactStatus
 from app.services.brief_renderer import BriefRenderer, RenderedBriefResult
 from app.services.config_service import AppConfig, load_config
-from app.services.protocol_index import ProtocolError, parse_protocol_file
+from app.services.protocol_lookup import find_protocol_section
 
 logger = logging.getLogger("ckea.agents.briefing_agent")
 
@@ -355,27 +355,6 @@ class BriefingAgent:
         protocol_version: Optional[str],
         section_id: Optional[str],
     ):
-        """Resolve the exact protocol section (same id, same version, same section) from protocol files.
-
-        Returns None when it cannot be resolved exactly. Never substitutes another version,
-        another section, or placeholder text.
-        """
-        if not (protocol_id and protocol_version and section_id):
-            return None
-        protocol_dir = self.config.protocol_dir
-        if not protocol_dir.exists():
-            return None
-        for p_file in sorted(protocol_dir.iterdir()):
-            if not (p_file.is_file() and p_file.suffix.lower() in (".json", ".md", ".txt")):
-                continue
-            try:
-                p_doc = parse_protocol_file(p_file)
-            except ProtocolError as e:
-                logger.warning("Protocol file %s could not be parsed: %s", p_file.name, e)
-                continue
-            if p_doc.protocol_id != protocol_id or p_doc.protocol_version != protocol_version:
-                continue
-            for sec in p_doc.sections:
-                if sec.section_id == section_id:
-                    return sec
-        return None
+        """Exact protocol section (same id, version and section) or None. Never substitutes."""
+        found = find_protocol_section(self.config.protocol_dir, protocol_id, protocol_version, section_id)
+        return found[1] if found else None

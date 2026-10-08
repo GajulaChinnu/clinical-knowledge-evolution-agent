@@ -480,11 +480,11 @@ class TestSafetyAndIntegrityInvariants:
 
     def test_7_no_new_llm_calls_in_streamlit_ui(self):
         # 16. No new LLM calls are introduced in UI
-        ui_file = Path("app/ui/streamlit_app.py")
-        content = ui_file.read_text(encoding="utf-8")
-        tree = ast.parse(content)
+        ui_files = sorted(Path("app/ui").rglob("*.py"))
+        assert len(ui_files) > 5, "UI package modules not found"
+        trees = [ast.parse(f.read_text(encoding="utf-8")) for f in ui_files]
 
-        for node in ast.walk(tree):
+        for node in (n for tree in trees for n in ast.walk(tree)):
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     assert "groq" not in alias.name.lower(), "Streamlit UI must not import Groq"
@@ -542,3 +542,43 @@ class TestSafetyAndIntegrityInvariants:
                 reviewer_id="dr_smith",
                 rationale="Requesting changes",
             )
+
+
+class TestNoSubstitutedProtocolText:
+    """The UI never shows another version/section or placeholder text as the institutional protocol."""
+
+    def test_wrong_version_is_unresolved(self, sample_protocol_json_path):
+        details = resolve_protocol_section_details(
+            protocol_id="PROT-DM-001", protocol_version="v9.9",
+            candidate_section_ids=["PROT-DM-001__v9.9__SEC-2"], protocol_dir=sample_protocol_json_path.parent,
+        )
+        assert details["is_resolved"] is False
+        assert details["section_text"] is None
+        assert "could not be resolved" in details["status_message"]
+
+    def test_unknown_section_is_not_replaced_by_first_section(self, sample_protocol_json_path):
+        details = resolve_protocol_section_details(
+            protocol_id="PROT-DM-001", protocol_version="v1.0",
+            candidate_section_ids=["PROT-DM-001__v1.0__SEC-404"], protocol_dir=sample_protocol_json_path.parent,
+        )
+        assert details["is_resolved"] is False
+        assert details["section_text"] is None
+
+    def test_verified_quote_used_when_file_unavailable(self, tmp_path):
+        details = resolve_protocol_section_details(
+            protocol_id="PROT-X", protocol_version="v2.0", section_id="SEC-3",
+            protocol_dir=tmp_path, verified_protocol_text="Verified quote ≥ 45 mL/min.",
+        )
+        assert details["is_resolved"] is True
+        assert details["section_text"] == "Verified quote ≥ 45 mL/min."
+
+
+def test_version_and_source_diff_display_helpers():
+    from app.ui.streamlit_app import format_version, summarize_source_diff
+
+    assert format_version("1.0") == "v1.0"
+    assert format_version("v1.0") == "v1.0"
+    assert format_version(None) == "unknown version"
+    diff = {"changes": [{"change_type": "modified"}, {"change_type": "removed"}, {"change_type": "modified"}]}
+    assert summarize_source_diff(diff) == "2 modified, 1 removed"
+    assert summarize_source_diff(None) == "No section-level diff recorded"
