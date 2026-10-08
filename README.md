@@ -1,63 +1,81 @@
 # Clinical Knowledge Evolution Agent (CKEA)
 
-The Clinical Knowledge Evolution Agent (CKEA) is an AI-assisted, multi-agent clinical evidence surveillance and governance pipeline designed to monitor external medical evidence, extract actionable clinical recommendations, compare findings against existing clinical protocols, evaluate organizational and patient impact, and assemble structured change briefs for clinical review. By continuously tracking clinical knowledge evolution, CKEA provides governed, auditable, and deterministic decision intelligence while preserving strict safety boundaries and human oversight.
+CKEA monitors a controlled set of SYNTHETIC publications, safety notices and clinical guidelines,
+identifies meaningful changes, compares them with the organisation's current protocols, and produces
+review-ready change briefs, so clinicians and the governance team focus only on changes that affect practice.
 
 ## Core Safety Rule
 > **The agent prepares. Clinicians decide.**
-> 
-> CKEA is a decision-support, evidence-monitoring, and governance-orchestration platform. It never automatically modifies clinical protocols, approves/rejects guidelines, closes reviews, or makes clinical decisions.
+>
+> CKEA is decision support. It never modifies a protocol, never approves/rejects/defers/closes a review,
+> and never answers without a verified verbatim excerpt from a stored source.
 
-## Six Specialized Agents
-1. **Monitoring Agent** — Versions every source against a stable identity; a new version is created only when the normalized content changes.
-2. **Extraction Agent** — Extracts structured clinical recommendations using Groq (`openai/gpt-oss-20b`) with quotation verification and G1 confidence gate (0.70 threshold).
-3. **Comparison Agent** — Compares recommendations against indexed institutional protocols using ChromaDB and Groq to detect specific differences (G2/G3 gates).
-4. **Impact Agent** — Calculates deterministic, auditable impact scores from `config/scoring.yaml` across clinical urgency, evidence strength, and pathway breadth.
-5. **Briefing Agent** — Compiles structured artifacts into complete 7-section Change Briefs rendered in HTML, Markdown, and JSON companion formats.
-6. **Governance Agent** — Manages reviewer assignments, enforces G4 decision gates, executes explicit human decisions, coordinates G5 SLA escalations, and maintains an immutable audit trail.
+## How clinicians use it: Treatment Check
+A clinician enters the **department** and the **treatment** they plan for a patient (plus optional
+de-identified context: age band, eGFR band, pregnancy, comorbidities, current medicines). CKEA checks the
+**latest** versions of the relevant guidance, safety notices and publications and answers with one of:
 
-## Source Inputs
-All three entry points produce the same normalized source and share one downstream path:
+| Verdict | Meaning |
+|---|---|
+| Matches the latest guidance | The plan matches a current recommendation. |
+| Guidance updated: follow the new version | The plan follows a superseded version or a withdrawn recommendation; the answer shows previous vs latest text, versions and dates. |
+| Conflicts with current guidance | A contraindication or safety notice applies, or the plan differs from current and earlier guidance. |
+| No grounded guidance covers this | Nothing in the monitored sources covers it. CKEA never guesses. |
 
-| Input | Retrieval | Stored as | Identity |
-|---|---|---|---|
-| PDF upload | local | `.pdf` | new source (content-derived) or "new version of" an existing source — never the filename |
-| URL to a PDF | direct download (size-capped) | `.pdf` | hash of the canonical URL |
-| URL to a web page | **Jina Reader only** | UTF-8 Markdown (`.md`) | hash of the canonical URL |
+Every answer cites source, version, publication date and the exact excerpt (verified against the stored
+file), shows the hospital protocol's position, and, if the protocol is out of date, the live status of the
+protocol-update review routed to a specialist. Patient identifiers are rejected before anything runs; patient
+context is never stored.
 
-- Web pages are never fetched directly; sites that require login, CAPTCHA or bot checks fail visibly as an ingestion failure and are never bypassed. There is no site-specific code.
-- Private, loopback and link-local hosts are blocked (SSRF guard). `ALLOW_PRIVATE_HOSTS=true` exists only for the local demo server.
-- Versioning uses the SHA-256 of the canonical normalized text; the raw-file SHA-256 is kept for integrity. Scanned (text-less) PDFs are rejected as `unreadable_needs_ocr`.
-- Diagnose how any URL would be routed: `.\.venv\Scripts\python.exe scripts/diagnose_url.py <url>` (never prints keys).
+## Six agents, run for every clinician query
+| Step | Agent | Action |
+|---|---|---|
+| 1 | Monitoring | Find watchlist sources for the department/treatment; ingest newer versions; return version history. |
+| 2 | Extraction | Index verbatim statements of the latest and previous versions (treatments, doses, thresholds, contraindications, evidence level). |
+| 3 | Comparison | Plan vs latest guidance; previous vs latest version; hospital protocol vs latest guidance. |
+| 4 | Impact | Rank findings by urgency, relevance, source quality and novelty (`config/ranking.yaml`); impact tiers use the approved `config/scoring.yaml`. |
+| 5 | Briefing | Deterministic verdict and answer brief; 7-section change briefs for governance. |
+| 6 | Governance | Route protocol-update briefs to a specialist of the department; record human decisions; G4/G5 unchanged. |
 
-## Configuration
-Copy `.env.example` to `.env`. Key settings: `GROQ_API_KEY`, `JINA_API_KEY`, `LLM_MAX_RETRIES`, `LLM_TIMEOUT_SECONDS`, `MAX_SOURCE_CHARS`, `SSO_ENABLED`, `REVIEWER_REGISTRY_PATH`.
+**Background surveillance** runs the same agents without a clinician query: a watchlist check detects new
+versions, categorises changes (dose, threshold, contraindication added/removed, safety warning, withdrawn,
+new recommendation, new evidence), filters non-practice-changing content (kept and restorable), links
+duplicates to the higher-quality source, ranks the feed, and routes high-impact briefs to specialists.
 
-- **Reviewers**: only identities listed in `config/reviewers.yaml` can assign, review or decide. With `SSO_ENABLED=true` the acting reviewer comes from the Streamlit OIDC sign-in email; without it the governance form runs in a clearly flagged, unauthenticated demo mode.
-- **Database migrations**: applied automatically on startup (Alembic, `app/models/migrations`). CLI: `alembic upgrade head`.
+## Configuration and data
+| File | Purpose |
+|---|---|
+| `config/taxonomy.yaml` | Departments, pathways, treatment classes, treatments and synonyms (controlled vocabulary). |
+| `config/watchlist.yaml` | The defined watchlist: source type, publisher, quality tier, departments, treatments. |
+| `config/ranking.yaml` | Relevance, urgency, source-quality, novelty and filter rules (rule ids + written bases). |
+| `config/scoring.yaml` | Approved impact tier rules (unchanged). |
+| `config/reviewers.yaml` | Reviewer registry: governance role and specialties. Deny-by-default. |
+| `data/corpus/` | SYNTHETIC versioned sources (v1 -> v2 per department, safety notices, publications). |
+| `data/protocols/` | SYNTHETIC institutional protocols with department metadata (some deliberately out of date). |
 
-## Launching the Streamlit Demonstration UI
+Copy `.env.example` to `.env` (`GROQ_API_KEY`, `JINA_API_KEY`, `SSO_ENABLED`, ...). Database migrations run
+automatically on startup (Alembic). Ad-hoc sources can still be added as PDF uploads, PDF URLs or web pages
+(web pages via Jina Reader only; private hosts blocked; walled sites fail visibly).
+
+## Run
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app/ui/streamlit_app.py
 ```
-Pages support deep links, e.g. `http://127.0.0.1:8501/?page=governance`. Application views:
-- **Dashboard**: Aggregated operational counts across documents, gates, briefs, and SLAs.
-- **Source Documents**: Read-only inspection of synthetic evidence documents.
-- **Changes & Comparison**: Recommendation extraction, protocol matching, and explicit no-match display.
-- **Impact Assessment**: Multidimensional scoring, tier routing, and written bases.
-- **Change Briefs**: 7-section clinical briefs in HTML, Markdown, and JSON companion formats.
-- **Governance / Human Review**: Explicit clinician actions (`Start Review`, `Approve`, `Reject`, `Defer`, `Close`).
-- **Audit History**: Immutable chronological audit log of all system and governance events.
-- **Evaluation Reports**: Inspector for Phase 12 evaluation metrics.
+Pages: **Treatment Check** (default), Dashboard (priority feed), Watchlist & Sources ("Check all sources now"),
+Detected Changes (ranked + Filtered tab), Protocol Comparison, Impact, Change Briefs, Governance, Audit Log,
+Evaluation. A sidebar department filter applies to feed, changes, briefs and governance. Deep links:
+`?page=treatment-check`, `?page=detected-changes`, ...
 
-## Running Demonstration and Test Scripts
-- **Full E2E Demonstration**: `.\.venv\Scripts\python.exe scripts/run_demo.py`
-- **Demo Smoke Test**: `.\.venv\Scripts\python.exe scripts/smoke_test_final_demo.py`
-- **Reset Demo Data**: `.\.venv\Scripts\python.exe scripts/reset_demo_data.py`
-- **Phase 12 Evaluation**: `.\.venv\Scripts\python.exe scripts/run_evaluation.py`
-- **Integration Test Suite**: `.\.venv\Scripts\pytest.exe -v tests/integration/test_final_demo.py`
-- **Full Test Suite**: `.\.venv\Scripts\pytest.exe -v` (install test extras with `pip install -e ".[dev]"`)
+## Demo and evaluation
+- **Clinician + surveillance demo** (own temporary database, never `data/ckea.db`):
+  `.\.venv\Scripts\python.exe scripts/run_clinician_demo.py`
+- **Labelled evaluation**: 26 clinician cases (`data/evaluation/clinician_queries.json`) covering every
+  verdict and identifier rejection; report in `data/evaluation/reports/clinician_query_report.md`.
+- Earlier pipeline demo: `.\.venv\Scripts\python.exe scripts/run_demo.py`
+- Tests: `.\.venv\Scripts\pytest.exe` (install extras with `pip install -e ".[dev]"`)
 
-For detailed technical documentation, architecture diagrams, and human gate specifications, see [docs/final_demo.md](docs/final_demo.md).
+See [docs/final_demo.md](docs/final_demo.md) for the walkthrough.
 
 ## Prototype Scope & Disclaimer
-All guideline documents and clinical protocols are synthetic. This system is a research prototype demonstration and does not constitute medical advice or production clinical software.
+All guideline documents, safety notices, publications and protocols are SYNTHETIC. This is a research
+prototype; it is not medical advice and not production clinical software.

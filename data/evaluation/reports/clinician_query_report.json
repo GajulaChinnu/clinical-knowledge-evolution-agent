@@ -1,0 +1,346 @@
+{
+  "generated_at": "2026-10-08T13:32:22.549704+00:00",
+  "cases": 26,
+  "cases_passed": 26,
+  "verdict_accuracy_by_class": {
+    "guidance_updated_follow_new_version": {
+      "correct": 8,
+      "total": 8,
+      "accuracy": 1.0
+    },
+    "consistent_with_latest_guidance": {
+      "correct": 7,
+      "total": 7,
+      "accuracy": 1.0
+    },
+    "conflicts_with_latest_guidance": {
+      "correct": 7,
+      "total": 7,
+      "accuracy": 1.0
+    },
+    "insufficient_grounded_evidence": {
+      "correct": 2,
+      "total": 2,
+      "accuracy": 1.0
+    },
+    "rejected": {
+      "correct": 2,
+      "total": 2,
+      "accuracy": 1.0
+    }
+  },
+  "citations_total": 85,
+  "citations_verified_rate": 1.0,
+  "ungrounded_answers": 0,
+  "latest_version_identified_rate": 1.0,
+  "surveillance": {
+    "change_category_accuracy": 1.0,
+    "change_category_by_source": {
+      "endo-t2d-guideline": true,
+      "cardio-af-guideline": true,
+      "neph-ckd-guideline": true,
+      "id-cap-guideline": true,
+      "em-anaphylaxis-guideline": true
+    },
+    "filter_precision": 1.0,
+    "filter_recall": 1.0,
+    "filtered_items_retained": 4,
+    "duplicate_linked_to_higher_quality_source": true,
+    "safety_and_threshold_ranked_above_case_series": true
+  },
+  "results": [
+    {
+      "case_id": "CQ-01",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true,
+        "previous_version": true,
+        "protocol:PROT-DM-001": true,
+        "specialist": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-02",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-03",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-04",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-05",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-06",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-07",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true,
+        "protocol:PROT-CARD-001": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-08",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-09",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-10",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-11",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-12",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true,
+        "protocol:PROT-NEPH-001": true,
+        "specialist": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-13",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-14",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-15",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true,
+        "previous_version": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-16",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "protocol:PROT-ID-001": true,
+        "duplicate_linked": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-17",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-18",
+      "expected": "conflicts_with_latest_guidance",
+      "actual": "conflicts_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-19",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-20",
+      "expected": "consistent_with_latest_guidance",
+      "actual": "consistent_with_latest_guidance",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "protocol:PROT-EM-001": true,
+        "specialist": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-21",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true,
+        "previous_version": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-22",
+      "expected": "guidance_updated_follow_new_version",
+      "actual": "guidance_updated_follow_new_version",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "citation": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-23",
+      "expected": "insufficient_grounded_evidence",
+      "actual": "insufficient_grounded_evidence",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "abstained_without_citations": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-24",
+      "expected": "insufficient_grounded_evidence",
+      "actual": "insufficient_grounded_evidence",
+      "passed": true,
+      "checks": {
+        "verdict": true,
+        "abstained_without_citations": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-25",
+      "expected": "rejected",
+      "actual": "rejected",
+      "passed": true,
+      "checks": {
+        "rejected": true
+      },
+      "notes": []
+    },
+    {
+      "case_id": "CQ-26",
+      "expected": "rejected",
+      "actual": "rejected",
+      "passed": true,
+      "checks": {
+        "rejected": true
+      },
+      "notes": []
+    }
+  ]
+}

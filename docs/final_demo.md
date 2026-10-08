@@ -214,10 +214,30 @@ Generated reports are located in `data/evaluation/reports/`:
 - **LLM Call Boundary**: Strictly restricted to `ExtractionAgent` and `ComparisonAgent`.
 - **Zero LLM Usage**: Monitoring, Impact scoring, Briefing rendering, Governance decisions, SLA scheduling, Streamlit UI, Audit trail, and Evaluation reporting make **zero LLM calls**.
 - **External Dependencies**: Zero external network dependencies (no RSS feeds, no live PubMed scraping, no email/SMS dispatch). Operates completely locally using synthetic files and SQLite.
+- **Clinician Treatment Check**: The verdict, comparison, ranking and routing are fully deterministic. Query mode makes **zero LLM calls**.
 
 ---
 
-### 8. Scope & Disclaimers
+### 8. Clinician Treatment Check & Watchlist Surveillance
+
+**Run:** `.\.venv\Scripts\python.exe scripts/run_clinician_demo.py`. It uses its own temporary database and never touches `data/ckea.db`.
+
+1. **Surveillance.** The watchlist (`config/watchlist.yaml`) is checked while only v1 is published. v2 is then "released", and the Monitoring Agent ingests the new versions. Changes are categorised (for example dose change, threshold change, contraindication added, withdrawn) and ranked with `config/ranking.yaml`. Non-practice-changing items are filtered but kept, and can be restored.
+2. **Treatment Check.** The demo runs one query per verdict:
+   - `metformin 500 mg twice daily` (eGFR >=60) → **Matches the latest guidance**
+   - `metformin 500 mg once daily` → **Guidance updated: follow the new version**. It shows v1.0 (2025-01-15) "once daily" against v2.0 (2026-02-01) "twice daily", and PROT-DM-001 is out of date.
+   - `levofloxacin` for low-severity CAP → **Conflicts with current guidance** (safety notice)
+   - `unicorn extract` → **No grounded guidance covers this**
+3. **Governance.** The PROT-DM-001 update brief is routed to the Endocrinology specialist (`dr_wilson`). Their explicit approval is then visible to the next clinician who asks. CKEA never edits the protocol.
+4. **Evaluation.** 26 labelled cases (`data/evaluation/clinician_queries.json`) are run, and a report is written to `data/evaluation/reports/clinician_query_report.md`.
+
+Expected result: 26/26 cases pass, 100% of citations are verified, and 0 answers lack a verified citation.
+
+**Every answer contains:** the verdict and its basis; each source checked with its latest version and date; what changed (previous vs latest excerpts); the plan components assessed; the hospital protocol's position; the governance status; and the notice "Decision support only. The treating clinician decides."
+
+---
+
+### 9. Scope & Disclaimers
 
 - This software is a **prototype demonstration** designed for controlled research and evaluation.
 - All guideline documents (`data/sources/`) and protocol definitions (`data/protocols/`) are **synthetic**.
