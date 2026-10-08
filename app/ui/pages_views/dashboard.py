@@ -12,7 +12,7 @@ from app.ui.queries import (
 from app.ui.components import render_page_header
 
 
-def render_dashboard(session_factory: sessionmaker[Session]) -> None:
+def render_dashboard(session_factory: sessionmaker[Session], department=None) -> None:
     """Render Dashboard overview metrics as an Executive Attention Center."""
     render_page_header(
         breadcrumb="OVERVIEW › ATTENTION CENTER",
@@ -74,6 +74,19 @@ def render_dashboard(session_factory: sessionmaker[Session]) -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
+    from app.ui.queries import get_detected_changes
+
+    feed = get_detected_changes(session_factory, department=department)[:8]
+    st.markdown("### Priority feed (ranked source changes)")
+    if feed:
+        st.dataframe([{
+            "Priority": r["priority"], "Change": r["category"].replace("_", " "), "Source": r["source"],
+            "Version": f"{r['previous_version'] or '-'} -> {r['latest_version']}", "Treatments": ", ".join(r["treatments"]),
+            "Departments": ", ".join(r["departments"]),
+        } for r in feed], use_container_width=True, hide_index=True)
+    else:
+        st.caption("No ranked changes yet. Run a watchlist check.")
 
     st.markdown("### Human Review Queues")
     col_q1, col_q2, col_q3 = st.columns(3)

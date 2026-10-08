@@ -199,22 +199,34 @@ class ClinicianQueryWorkflow:
             new_versions_ingested=len(check.new_document_ids), error=check.error,
         )
 
-    @staticmethod
-    def _without_patient_context(query: ClinicianQuery, answer: ClinicianAnswer) -> dict:
-        """Stored copy of the answer with patient-context values (bands, comorbidities, medicines) masked."""
-        ctx = query.context
-        sensitive = [v for v in (ctx.egfr_band, ctx.age_band) if v]
-        sensitive += [t for t in (*ctx.comorbidities, *ctx.current_medications) if t]
-        sensitive += [t.lower() for t in (*ctx.comorbidities, *ctx.current_medications) if t]
-        for med in query.medication_treatments:
-            sensitive.append(med)
-            sensitive.append(get_taxonomy().treatment_name(med))
-        if ctx.pregnancy:
-            sensitive.append("patient is pregnant")
-        text = json.dumps(answer.model_dump(mode="json"))
-        for value in sorted(set(sensitive), key=len, reverse=True):
-            text = text.replace(json.dumps(value)[1:-1], "[context]")
-        return json.loads(text)
+    PATIENT_BASIS_PLACEHOLDER = "[patient-specific basis not stored]"
+
+    @classmethod
+    def _without_patient_context(cls, query: ClinicianQuery, answer: ClinicianAnswer) -> dict:
+        """Stored copy of the answer without patient-specific reasoning.
+
+        Only the applicability explanations (which are built from the de-identified context) are
+        removed - including where the verdict basis or summary repeats them. Verbatim citation
+        excerpts and protocol text are never altered.
+        """
+        bases = sorted({f.applicability_basis for f in answer.findings if f.applicability_basis}, key=len, reverse=True)
+
+        def scrub(obj, key=None):
+            if isinstance(obj, dict):
+                return {k: scrub(v, k) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [scrub(v, key) for v in obj]
+            if isinstance(obj, str):
+                if key == "applicability_basis":
+                    return cls.PATIENT_BASIS_PLACEHOLDER
+                if key in ("excerpt", "section_text"):
+                    return obj
+                for basis in bases:
+                    obj = obj.replace(basis, cls.PATIENT_BASIS_PLACEHOLDER)
+                return obj
+            return obj
+
+        return scrub(answer.model_dump(mode="json"))
 
     def _persist(self, query: ClinicianQuery, answer: ClinicianAnswer, actor: str) -> str:
         cited = [c.statement_id for c in answer.citations]

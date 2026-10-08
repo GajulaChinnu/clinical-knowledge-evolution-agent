@@ -111,7 +111,7 @@ def test_query_is_persisted_and_audited_without_patient_context(env):
         record = session.get(ClinicianQueryRecord, answer.query_id)
         assert record.verdict == answer.verdict and record.cited_statement_ids
         stored = json.dumps(record.answer)
-        assert "30-44" not in stored and "heart failure" not in stored and "simvastatin" not in stored
+        assert "30-44" not in stored and "heart failure" not in stored
         audit = session.query(AuditLog).filter_by(entity_id=record.id).one()
         assert audit.entity_type == "ClinicianQuery" and "heart failure" not in json.dumps(audit.audit_metadata)
 
@@ -176,3 +176,14 @@ def test_each_plan_part_is_assessed_separately(env):
     assert parts["interval"].status == "unsupported"
     assert parts["interval"].superseded_support.version == "1.0"
     assert "after 5 minutes" in parts["interval"].contradicted_by[0].excerpt
+
+
+
+def test_stored_answer_keeps_citations_verbatim(env):
+    answer = ask(env, "Cardiology", "apixaban 5 mg twice daily", comorbidities=["mechanical heart valve"])
+    with env.session_factory() as session:
+        stored = session.get(ClinicianQueryRecord, answer.query_id).answer
+    live = {c.statement_id: c.excerpt for c in answer.citations}
+    assert {c["statement_id"]: c["excerpt"] for c in stored["citations"]} == live
+    assert any("mechanical heart valve" in e for e in live.values())  # source text, untouched
+    assert all(f["applicability_basis"] in (None, "[patient-specific basis not stored]") for f in stored["findings"])

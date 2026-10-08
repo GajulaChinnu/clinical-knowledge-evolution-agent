@@ -24,7 +24,7 @@ from app.ui.components import (
 )
 
 
-def render_governance_view(session_factory: sessionmaker[Session], governance_agent: GovernanceAgent) -> None:
+def render_governance_view(session_factory: sessionmaker[Session], governance_agent: GovernanceAgent, department=None) -> None:
     """Render Human Governance Decision View as an Enterprise Review Console (Gate G4)."""
     render_page_header(
         breadcrumb="DECISION DESK › GOVERNANCE (G4)",
@@ -32,7 +32,7 @@ def render_governance_view(session_factory: sessionmaker[Session], governance_ag
         description="Authorized clinicians review evidence briefs and record formal, immutable governance decisions."
     )
 
-    briefs = get_brief_summaries(session_factory)
+    briefs = get_brief_summaries(session_factory, department=department)
     if not briefs:
         st.markdown(
             """

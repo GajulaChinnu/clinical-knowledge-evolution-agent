@@ -58,14 +58,14 @@ def determine_verdict(query: ClinicianQuery, outcome: ComparisonOutcome) -> Tupl
         # Some part of the plan is contradicted by every current recommendation that states it.
         if all(c.superseded_support is not None for c in unsupported):
             parts = "; ".join(
-                f"{c.attribute} {c.plan_value} was stated in version {c.superseded_support.version} "
+                f"{c.attribute} {c.plan_value.replace('_', ' ')} was stated in version {c.superseded_support.version} "
                 f"(\"{c.superseded_support.excerpt}\"), latest says \"{c.contradicted_by[0].excerpt}\" "
                 f"[{_src(c.contradicted_by[0])}]"
                 for c in unsupported
             )
             return "guidance_updated_follow_new_version", f"The plan follows a superseded version: {parts}."
         parts = "; ".join(
-            f"{c.attribute} {c.plan_value} vs \"{c.contradicted_by[0].excerpt}\" [{_src(c.contradicted_by[0])}]"
+            f"{c.attribute} {c.plan_value.replace('_', ' ')} vs \"{c.contradicted_by[0].excerpt}\" [{_src(c.contradicted_by[0])}]"
             for c in unsupported
         )
         return "conflicts_with_latest_guidance", (

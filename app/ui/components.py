@@ -111,8 +111,8 @@ def render_header() -> None:
         """
         <div class="gov-notice-strip">
             <span style="margin-right: 8px; font-size: 1rem;">🛡️</span>
-            <div><strong>Clinical Governance Notice:</strong> System prepares evidence, identifies protocol gaps, and calculates impact. 
-            <strong>Authorized clinicians make all governance decisions.</strong> No recommendation or protocol is modified automatically.</div>
+            <div><strong>The agent prepares. Clinicians decide.</strong> CKEA monitors guidance, detects changes, compares them with
+            hospital protocols and answers from grounded source text. It never modifies a protocol or makes a clinical or governance decision.</div>
         </div>
         """,
         unsafe_allow_html=True,

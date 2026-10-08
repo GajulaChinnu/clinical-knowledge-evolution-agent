@@ -453,7 +453,10 @@ def get_impact_records(session_factory: Union[sessionmaker[Session], Session]) -
         return results
 
 
-def get_brief_summaries(session_factory: Union[sessionmaker[Session], Session]) -> List[Dict[str, Any]]:
+def get_brief_summaries(
+    session_factory: Union[sessionmaker[Session], Session],
+    department: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """Retrieve summary information for all generated ChangeBriefs joined with source and protocol."""
     with _session_scope(session_factory) as session:
         briefs = session.query(ChangeBrief).order_by(desc(ChangeBrief.created_at)).all()
@@ -510,7 +513,12 @@ def get_brief_summaries(session_factory: Union[sessionmaker[Session], Session]) 
                 "due_date": assignment.due_date if assignment else None,
                 "decision": assignment.decision if assignment else None,
                 "is_overdue": is_overdue,
+                "affected_departments": list(payload.get("affected_departments")
+                                             or (imp.affected_departments if imp and imp.affected_departments else [])
+                                             or meta.get("departments") or []),
             })
+        if department:
+            items = [i for i in items if department in i["affected_departments"]]
         return items
 
 
@@ -728,3 +736,147 @@ def handle_source_url_upload(
         monitoring_agent=monitoring_agent,
         pipeline=pipeline,
     ).ingest_url(url)
+
+
+# ==============================================================================
+# CLINICIAN QUERY WORKFLOW, WATCHLIST SURVEILLANCE AND DETECTED CHANGES
+# ==============================================================================
+
+def build_clinician_workflow(session_factory: sessionmaker[Session], config: AppConfig):
+    """Construct the six agents and the clinician Treatment Check workflow."""
+    from app.agents.briefing_agent import BriefingAgent
+    from app.agents.comparison_agent import ComparisonAgent
+    from app.agents.extraction_agent import ExtractionAgent
+    from app.agents.impact_agent import ImpactAgent
+    from app.orchestration.clinician_query import ClinicianQueryWorkflow
+    from app.services.url_ingestion_service import URLIngestionService
+
+    return ClinicianQueryWorkflow(
+        session_factory=session_factory,
+        config=config,
+        monitoring_agent=MonitoringAgent(source_dir=config.source_dir, session_factory=session_factory, config=config),
+        extraction_agent=ExtractionAgent(session_factory=session_factory, config=config),
+        comparison_agent=ComparisonAgent(session_factory=session_factory, config=config),
+        impact_agent=ImpactAgent(session_factory=session_factory, config=config),
+        briefing_agent=BriefingAgent(session_factory=session_factory, config=config),
+        governance_agent=GovernanceAgent(session_factory=session_factory, config=config),
+        url_service=URLIngestionService(config=config),
+    )
+
+
+def run_watchlist_surveillance(
+    session_factory: sessionmaker[Session], config: AppConfig, entry_ids: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Background surveillance: check watchlist sources, index new versions, grade and rank changes."""
+    from app.agents.extraction_agent import ExtractionAgent
+    from app.agents.impact_agent import ImpactAgent
+    from app.services.url_ingestion_service import URLIngestionService
+    from app.services.watchlist import load_watchlist
+
+    watchlist = load_watchlist()
+    entries = [watchlist.get(e) for e in entry_ids] if entry_ids else list(watchlist)
+    monitoring = MonitoringAgent(source_dir=config.source_dir, session_factory=session_factory, config=config)
+    checks = monitoring.check_watchlist(watchlist, entries, URLIngestionService(config=config))
+    doc_ids = [v.document_id for c in checks for v in c.versions]
+    ExtractionAgent(session_factory=session_factory, config=config).index_guidance_statements(doc_ids)
+    ImpactAgent(session_factory=session_factory, config=config).assess_guidance_changes()
+    return [{
+        "Source": watchlist.get(c.entry_id).title,
+        "New versions": len(c.new_document_ids),
+        "Latest": (c.latest.publisher_version or c.latest.internal_version) if c.latest else "-",
+        "Published": c.latest.published_date if c.latest else "-",
+        "Result": c.error or "OK",
+    } for c in checks]
+
+
+def get_watchlist_rows(session_factory: sessionmaker[Session]) -> List[Dict[str, Any]]:
+    """Watchlist entries with their latest stored version."""
+    from app.services.taxonomy import get_taxonomy
+    from app.services.watchlist import load_watchlist
+
+    taxonomy = get_taxonomy()
+    rows = []
+    with session_factory() as session:
+        for entry in load_watchlist():
+            docs = (session.query(IngestedDocument).filter_by(source_identifier=entry.source_identity)
+                    .order_by(desc(IngestedDocument.created_at)).all())
+            latest = docs[0] if docs else None
+            meta = (latest.doc_metadata or {}) if latest else {}
+            rows.append({
+                "id": entry.id,
+                "Source": entry.title,
+                "Type": entry.source_type.replace("_", " "),
+                "Departments": ", ".join(taxonomy.department_name(d) for d in entry.departments),
+                "Quality tier": entry.quality_tier,
+                "Latest version": meta.get("publisher_version") or (latest.source_version if latest else "not yet checked"),
+                "Published": meta.get("published_date") or "",
+                "Versions stored": len(docs),
+                "Last checked": str(latest.ingest_timestamp)[:16] if latest else "",
+            })
+    return rows
+
+
+def get_detected_changes(
+    session_factory: sessionmaker[Session], department: Optional[str] = None, filtered: bool = False,
+) -> List[Dict[str, Any]]:
+    """Ranked source-evolution changes (latest versions only), or the filtered ones."""
+    from app.agents.impact_agent import ImpactAgent
+    from app.models.entities import GuidanceStatement
+    from app.services.taxonomy import get_taxonomy
+
+    taxonomy = get_taxonomy()
+    feed = ImpactAgent(session_factory=session_factory).ranked_feed(department=department, include_filtered=True)
+    rows = []
+    with session_factory() as session:
+        for change in feed:
+            is_filtered = change.relevance_status == "filtered_not_practice_changing"
+            if is_filtered != filtered:
+                continue
+            old = session.get(GuidanceStatement, change.from_statement_id) if change.from_statement_id else None
+            new = session.get(GuidanceStatement, change.to_statement_id) if change.to_statement_id else None
+            doc = session.get(IngestedDocument, change.to_document_id)
+            meta = (doc.doc_metadata or {}) if doc else {}
+            rows.append({
+                "id": change.id,
+                "category": change.change_category,
+                "source": meta.get("title") or change.source_identity,
+                "source_type": change.source_type,
+                "previous_version": old.publisher_version if old else None,
+                "previous_date": old.published_date if old else None,
+                "previous_text": old.verbatim_text if old else None,
+                "latest_version": new.publisher_version if new else meta.get("publisher_version"),
+                "latest_date": new.published_date if new else meta.get("published_date"),
+                "latest_text": new.verbatim_text if new else None,
+                "attribute_changes": change.attribute_changes or [],
+                "treatments": [taxonomy.treatment_name(t) for t in (change.treatments or [])],
+                "departments": [taxonomy.department_name(d) for d in (change.departments or [])],
+                "pathways": [taxonomy.pathways[p].name for p in (change.pathways or []) if p in taxonomy.pathways],
+                "priority": change.priority_score,
+                "urgency": change.urgency,
+                "relevance": change.relevance,
+                "source_quality": change.source_quality,
+                "novelty": change.novelty,
+                "duplicate_of": change.duplicate_of_change_id,
+                "ranking_basis": change.ranking_basis or {},
+                "status": change.relevance_status,
+                "filter_reason": change.filter_reason,
+            })
+    return rows
+
+
+def restore_filtered_change(session_factory: sessionmaker[Session], config: AppConfig, change_id: str,
+                            reviewer_id: str, reason: str):
+    from app.agents.impact_agent import ImpactAgent
+    from app.services.reviewer_authorization import ReviewerAuthorizationService
+
+    auth = ReviewerAuthorizationService(registry_path=config.reviewer_registry_path)
+    return ImpactAgent(session_factory=session_factory, config=config).restore_filtered_change(change_id, reviewer_id, reason, auth)
+
+
+def get_query_history(session_factory: sessionmaker[Session], limit: int = 15) -> List[Dict[str, Any]]:
+    from app.models.entities import ClinicianQueryRecord
+
+    with session_factory() as session:
+        rows = session.query(ClinicianQueryRecord).order_by(desc(ClinicianQueryRecord.created_at)).limit(limit).all()
+        return [{"id": r.id, "created_at": r.created_at, "department": r.department, "treatment": r.treatment,
+                 "verdict": r.verdict, "answer": r.answer} for r in rows]

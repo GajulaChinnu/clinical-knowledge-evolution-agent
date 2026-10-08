@@ -17,7 +17,7 @@ from app.ui.components import (
 )
 
 
-def render_briefs_view(session_factory: sessionmaker[Session]) -> None:
+def render_briefs_view(session_factory: sessionmaker[Session], department=None) -> None:
     """Render 7-Section Change Briefs formatted as Executive Review Documents."""
     render_page_header(
         breadcrumb="GOVERNANCE › CHANGE BRIEFS",
@@ -25,7 +25,7 @@ def render_briefs_view(session_factory: sessionmaker[Session]) -> None:
         description="Audit-grade evidence briefs prepared for authorized hospital governance review."
     )
 
-    briefs = get_brief_summaries(session_factory)
+    briefs = get_brief_summaries(session_factory, department=department)
     if not briefs:
         st.markdown(
             """

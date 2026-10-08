@@ -258,3 +258,6 @@ hr { margin: 0.75rem 0 !important; }
     letter-spacing: 0.04em;
     color: #64748b !important;
 }
+
+/* History / list buttons read left-aligned */
+[data-testid="stMain"] .stButton button[kind="secondary"] { justify-content: flex-start; text-align: left; }
