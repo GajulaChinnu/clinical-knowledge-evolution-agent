@@ -336,3 +336,28 @@ def mentions_plan(parsed: ParsedStatement, query: ClinicianQuery, taxonomy: Taxo
 
 def unique(items: Iterable[str]) -> List[str]:
     return sorted(set(items))
+
+
+PLAN_ATTRIBUTES = ("dose", "frequency", "interval", "duration", "route")
+
+
+def attribute_value(parsed: ParsedStatement, attribute: str) -> Optional[str]:
+    """Display value of one plan/statement attribute, or None when the text does not specify it."""
+    if attribute == "dose":
+        return ", ".join(f"{d.value:g} {d.unit}" for d in parsed.doses) or None
+    value = getattr(parsed, attribute)
+    if value is None:
+        return None
+    return value if isinstance(value, str) else f"{value[0]:g} {value[1]}(s)"
+
+
+def attribute_supported(plan: ParsedStatement, stmt: ParsedStatement, attribute: str) -> Optional[bool]:
+    """True/False when the statement specifies the attribute; None when it does not."""
+    if attribute == "dose":
+        if not plan.doses or not stmt.doses:
+            return None
+        return {(d.value, d.unit) for d in plan.doses} <= {(d.value, d.unit) for d in stmt.doses}
+    a, b = getattr(plan, attribute), getattr(stmt, attribute)
+    if a is None or b is None:
+        return None
+    return a == b

@@ -138,12 +138,26 @@ class SourceChecked(BaseModel):
     error: Optional[str] = None
 
 
+class PlanComponent(BaseModel):
+    """One part of the plan (dose, frequency, interval, duration, route) against current guidance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    attribute: str
+    plan_value: str
+    status: Literal["supported", "unsupported", "not_addressed"]
+    supported_by: List[str] = Field(default_factory=list)
+    contradicted_by: List[Citation] = Field(default_factory=list)
+    superseded_support: Optional[Citation] = None
+
+
 class ComparisonOutcome(BaseModel):
     """Comparison Agent output for a clinician query."""
 
     model_config = ConfigDict(extra="forbid")
 
     findings: List[Finding] = Field(default_factory=list)
+    plan_components: List[PlanComponent] = Field(default_factory=list)
     version_changes: List[VersionComparison] = Field(default_factory=list)
     protocol_positions: List[ProtocolPosition] = Field(default_factory=list)
     retrieval: str = "taxonomy"

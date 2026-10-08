@@ -445,3 +445,23 @@ def _block_statement_update(mapper, connection, target) -> None:
 @event.listens_for(GuidanceStatement, "before_delete")
 def _block_statement_delete(mapper, connection, target) -> None:
     raise ImmutableEntityError("GuidanceStatement rows are immutable provenance records.")
+
+
+class ClinicianQueryRecord(Base):
+    """A clinician Treatment Check and its grounded answer.
+
+    Stores department, treatment, verdict and cited statement ids. Patient context is never stored.
+    """
+
+    __tablename__ = "clinician_queries"
+
+    id: str = Column(String(36), primary_key=True, default=_gen_uuid)
+    actor: str = Column(String(128), nullable=False, default="clinician")
+    department: str = Column(String(64), nullable=False, index=True)
+    treatment: str = Column(String(255), nullable=False)
+    condition: Optional[str] = Column(String(255), nullable=True)
+    verdict: Optional[str] = Column(String(64), nullable=True, index=True)
+    cited_statement_ids: Optional[Any] = Column(JSON, nullable=True)
+    answer: Optional[Any] = Column(JSON, nullable=True)
+    created_at: datetime = Column(UTCDateTime(), nullable=False, default=_utc_now)
+    schema_version: str = Column(String(16), nullable=False, default="1.0")

@@ -349,6 +349,12 @@ class BriefingAgent:
             session.expunge(brief_entity)
             return brief_entity
 
+    def build_clinician_answer(self, query, outcome, ranked_findings, sources_checked, steps, taxonomy):
+        """Clinician query mode: deterministic verdict and answer brief from verified comparison results."""
+        from app.services.clinician_answer import build_answer
+
+        return build_answer(query, outcome, ranked_findings, sources_checked, steps, taxonomy)
+
     def _resolve_protocol_section(
         self,
         protocol_id: Optional[str],

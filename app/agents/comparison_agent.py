@@ -17,10 +17,13 @@ from app.services.llm_client import SharedLLMClient
 from app.services.protocol_index import ProtocolIndexService
 from app.schemas.clinician_query import ClinicianQuery
 from app.schemas.protocol import ProtocolDocument
-from app.schemas.treatment_check import ComparisonOutcome, Finding, VersionComparison
+from app.schemas.treatment_check import ComparisonOutcome, Finding, PlanComponent, VersionComparison
 from app.services.clinical_statements import parse_statement
 from app.services.taxonomy import Taxonomy, get_taxonomy
 from app.services.treatment_comparison import (
+    PLAN_ATTRIBUTES,
+    attribute_supported,
+    attribute_value,
     GUIDANCE_SOURCE_TYPES,
     StatementRef,
     build_citation,
@@ -127,6 +130,7 @@ class ComparisonAgent:
 
             findings = self._plan_findings(query, latest_refs, change_refs, taxonomy)
             outcome.findings = findings
+            outcome.plan_components = self._plan_components(query, latest_refs, change_refs, taxonomy)
             outcome.version_changes = self._version_changes(query, change_refs, taxonomy)
             outcome.protocol_positions = [
                 compare_protocol(p, query, [r for r in latest_refs if r.stmt.source_type in GUIDANCE_SOURCE_TYPES],
@@ -225,6 +229,55 @@ class ComparisonAgent:
                     governing.previous_citation = build_citation(old.stmt, old.doc)
                     governing.change_category = change.change_category
         return findings
+
+    def _plan_components(self, query, latest_refs, change_refs, taxonomy) -> List[PlanComponent]:
+        """Assess each part of the plan separately against current guideline/notice recommendations.
+
+        A part is supported if any applicable current recommendation states the same value,
+        unsupported if current recommendations state only other values, and not_addressed if none
+        states it. For unsupported parts, a superseded version that stated the plan's value is
+        recorded (that is what makes the verdict 'guidance updated' rather than 'conflicts').
+        """
+        plan = query.plan.parsed
+        candidates = [
+            r for r in latest_refs
+            if r.stmt.source_type in GUIDANCE_SOURCE_TYPES and r.parsed.statement_type == "recommendation"
+            and mentions_plan(r.parsed, query, taxonomy)[0]
+            and egfr_condition(r.parsed, query)[0] != "not_applicable"
+        ]
+        components: List[PlanComponent] = []
+        for attribute in PLAN_ATTRIBUTES:
+            plan_value = attribute_value(plan, attribute)
+            if plan_value is None:
+                continue
+            supporters, contradictors = [], []
+            for ref in candidates:
+                verdict = attribute_supported(plan, ref.parsed, attribute)
+                if verdict is True:
+                    supporters.append(ref)
+                elif verdict is False:
+                    contradictors.append(ref)
+            status = "supported" if supporters else "unsupported" if contradictors else "not_addressed"
+            superseded = None
+            if status == "unsupported":
+                for change, old, new in change_refs:
+                    if old is None or old.stmt.source_type not in GUIDANCE_SOURCE_TYPES:
+                        continue
+                    if not mentions_plan(old.parsed, query, taxonomy)[0]:
+                        continue
+                    if attribute_supported(plan, old.parsed, attribute) is True and (
+                        new is None or new.stmt.statement_type == "withdrawal"
+                        or attribute_supported(plan, new.parsed, attribute) is not True
+                    ):
+                        superseded = build_citation(old.stmt, old.doc)
+                        break
+            components.append(PlanComponent(
+                attribute=attribute, plan_value=plan_value, status=status,
+                supported_by=[r.stmt.id for r in supporters],
+                contradicted_by=[build_citation(r.stmt, r.doc) for r in contradictors],
+                superseded_support=superseded,
+            ))
+        return components
 
     def _version_changes(self, query, change_refs, taxonomy) -> List[VersionComparison]:
         plan = query.plan.parsed

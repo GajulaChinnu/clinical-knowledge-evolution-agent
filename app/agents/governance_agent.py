@@ -869,6 +869,100 @@ class GovernanceAgent:
             session.expunge(log_entry)
             return log_entry
 
+    # ==========================================================================
+    # CLINICIAN QUERY MODE: protocol-update review status for the clinician
+    # ==========================================================================
+
+    def governance_for_query(self, query: Any, answer: Any, actor: str = "clinician") -> List[Any]:
+        """For each out-of-date protocol in the answer, report the related change brief's status.
+
+        If no brief exists yet, the governance team is notified (deduplicated). This never assigns
+        a reviewer automatically to an unrelated person and never records a decision.
+        """
+        from app.schemas.treatment_check import GovernanceStatus
+
+        statuses: List[GovernanceStatus] = []
+        for position in answer.protocol_positions:
+            if position.status != "out_of_date":
+                continue
+            brief = self._find_brief_for_protocol(position.protocol_id, list(query.treatment_ids))
+            if brief is not None:
+                statuses.append(self._brief_status(brief, position.protocol_id))
+                continue
+            flag = self._flag_protocol_out_of_date(position, query, answer, actor)
+            statuses.append(GovernanceStatus(
+                protocol_id=position.protocol_id,
+                status="flagged_to_governance",
+                message=(f"Protocol {position.protocol_id} {position.protocol_version} is out of date for "
+                         f"{query.plan.text}; no change brief exists yet. The governance team has been notified "
+                         f"(notification {flag.id[:8]})."),
+            ))
+        return statuses
+
+    def _find_brief_for_protocol(self, protocol_id: str, treatment_ids: List[str]) -> Optional[ChangeBrief]:
+        from app.services.taxonomy import TaxonomyError, get_taxonomy
+
+        try:
+            taxonomy = get_taxonomy()
+        except TaxonomyError:
+            taxonomy = None
+        with self.session_factory() as session:
+            briefs = session.query(ChangeBrief).order_by(ChangeBrief.created_at.desc()).all()
+            for brief in briefs:
+                payload = brief.structured_payload or {}
+                if (payload.get("current_protocol") or {}).get("protocol_id") != protocol_id:
+                    continue
+                text = (payload.get("what_changed") or {}).get("recommendation_text") or ""
+                mentioned = taxonomy.find_treatments(text).treatments if taxonomy else []
+                if not treatment_ids or set(mentioned) & set(treatment_ids):
+                    session.expunge(brief)
+                    return brief
+        return None
+
+    def _brief_status(self, brief: ChangeBrief, protocol_id: str) -> Any:
+        from app.schemas.treatment_check import GovernanceStatus
+
+        with self.session_factory() as session:
+            assignments = session.query(ReviewAssignment).filter_by(change_brief_id=brief.id).all()
+            reviewers = [f"{a.reviewer_role} ({a.reviewer_id})" for a in assignments]
+            decided = next((a for a in assignments if a.decision), None)
+        status = brief.status
+        if status in (BriefStatus.ASSIGNED.value, BriefStatus.IN_REVIEW.value):
+            message = f"Protocol update pending specialist review ({', '.join(reviewers) or 'assignment pending'})."
+        elif status == BriefStatus.DEFERRED.value and decided is not None:
+            follow = decided.defer_follow_up_date.date().isoformat() if decided.defer_follow_up_date else "a set date"
+            message = f"Protocol update review deferred until {follow}."
+        elif status in (BriefStatus.DECIDED.value, BriefStatus.CLOSED.value) and decided is not None:
+            when = decided.decision_timestamp.date().isoformat() if decided.decision_timestamp else ""
+            message = f"Protocol update {decided.decision}d on {when} by {decided.reviewer_role}."
+        elif status == BriefStatus.DRAFT.value:
+            message = "Protocol update brief drafted; awaiting routing to a specialist."
+        else:
+            message = f"Protocol update brief status: {status}."
+        return GovernanceStatus(protocol_id=protocol_id, brief_id=brief.id, status=status, message=message,
+                                reviewers=reviewers)
+
+    def _flag_protocol_out_of_date(self, position: Any, query: Any, answer: Any, actor: str) -> Notification:
+        key = {"protocol_id": position.protocol_id, "protocol_version": position.protocol_version,
+               "treatments": sorted(query.treatment_ids)}
+        with self.session_factory() as session:
+            for existing in session.query(Notification).filter_by(notification_type="protocol_out_of_date",
+                                                                    delivery_status="pending"):
+                payload = existing.payload or {}
+                if all(payload.get(k) == v for k, v in key.items()):
+                    session.expunge(existing)
+                    return existing
+        evidence = [i.latest_citation.statement_id for i in position.items if i.latest_citation]
+        return self._record_notification(
+            related_entity_id=position.protocol_id,
+            related_entity_type="Protocol",
+            notification_type="protocol_out_of_date",
+            recipient="governance_team",
+            payload={**key, "department": query.department, "raised_by": actor,
+                     "evidence_statement_ids": evidence,
+                     "reasons": [i.reason for i in position.items if i.status != "aligned"]},
+        )
+
     def _record_notification(
         self,
         related_entity_id: str,
