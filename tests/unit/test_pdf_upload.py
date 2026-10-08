@@ -214,7 +214,7 @@ def test_filename_traversal_blocked(isolated_env):
 def test_monitoring_agent_invoked(isolated_env):
     """Test that MonitoringAgent is explicitly invoked during upload processing."""
     mock_monitoring = MagicMock(spec=MonitoringAgent)
-    mock_monitoring.scan.return_value = ScanResult(discovered=1, new_documents=1, skipped=0, failed=0)
+    mock_monitoring.ingest_known_file.return_value = ScanResult(discovered=1, new_documents=1, skipped=0, failed=0)
 
     mock_pipeline = MagicMock(spec=ClinicalKnowledgePipeline)
     mock_pipeline.process_document.return_value = PipelineResult(
@@ -232,7 +232,14 @@ def test_monitoring_agent_invoked(isolated_env):
         pipeline=mock_pipeline,
     )
 
-    assert mock_monitoring.scan.called
+    # Only the uploaded file is ingested (never a scan of the whole source directory),
+    # under a content-derived identity rather than the filename.
+    assert mock_monitoring.ingest_known_file.called
+    assert not mock_monitoring.scan.called
+    kwargs = mock_monitoring.ingest_known_file.call_args.kwargs
+    assert Path(kwargs["file_path"]).name == "new_source.pdf"
+    assert kwargs["source_identifier"].startswith("pdf_")
+    assert "new_source" not in kwargs["source_identifier"]
 
 
 # ==============================================================================
@@ -242,7 +249,7 @@ def test_monitoring_agent_invoked(isolated_env):
 def test_existing_pipeline_invoked(isolated_env):
     """Test that ClinicalKnowledgePipeline is invoked with the saved document path."""
     mock_monitoring = MagicMock(spec=MonitoringAgent)
-    mock_monitoring.scan.return_value = ScanResult(discovered=1, new_documents=1, skipped=0, failed=0)
+    mock_monitoring.ingest_known_file.return_value = ScanResult(discovered=1, new_documents=1, skipped=0, failed=0)
 
     mock_pipeline = MagicMock(spec=ClinicalKnowledgePipeline)
     mock_pipeline.process_document.return_value = PipelineResult(
@@ -344,7 +351,8 @@ def test_uploaded_document_appears_in_source_listing(isolated_env):
 
     docs = get_source_documents(isolated_env["session_factory"])
     assert len(docs) == 1
-    assert docs[0]["source_identifier"] == "clinical_listing"
+    assert docs[0]["source_identifier"].startswith("pdf_")
+    assert docs[0]["source_identifier"] == res["source_identifier"]
     assert docs[0]["sha256_hash"] == res["sha256_hash"]
     assert docs[0]["status"] == DocumentStatus.PARSED.value
 
@@ -658,3 +666,91 @@ def test_streamlit_ui_adds_no_llm_calls():
     # The upload logic delegates solely to MonitoringAgent and ClinicalKnowledgePipeline
     assert "MonitoringAgent" in source_code
     assert "ClinicalKnowledgePipeline" in source_code
+
+
+# ==============================================================================
+# SOURCE IDENTITY & VERSIONING FOR PDF UPLOADS
+# ==============================================================================
+
+def _real_agent_and_mock_pipeline(isolated_env):
+    m_agent = MonitoringAgent(
+        source_dir=isolated_env["source_dir"],
+        session_factory=isolated_env["session_factory"],
+        config=isolated_env["config"],
+    )
+    mock_pipeline = MagicMock(spec=ClinicalKnowledgePipeline)
+    mock_pipeline.process_document.return_value = PipelineResult(
+        document_id="doc-x", status=PipelineStatus.COMPLETED, current_stage=PipelineStage.EXTRACTION,
+    )
+    return m_agent, mock_pipeline
+
+
+def test_same_content_under_different_filename_is_a_no_op(isolated_env):
+    m_agent, pipe = _real_agent_and_mock_pipeline(isolated_env)
+    common = dict(session_factory=isolated_env["session_factory"], config=isolated_env["config"],
+                  monitoring_agent=m_agent, pipeline=pipe)
+    first = handle_source_pdf_upload("guideline.pdf", isolated_env["valid_pdf_bytes"], **common)
+    second = handle_source_pdf_upload("guideline_copy_renamed.pdf", isolated_env["valid_pdf_bytes"], **common)
+
+    assert second["gate_status"] == "No Change"
+    assert first["source_identifier"] == second["source_identifier"]
+    with isolated_env["session_factory"]() as session:
+        assert session.query(IngestedDocument).count() == 1
+
+
+def test_changed_upload_attached_to_existing_source_creates_linked_version(isolated_env):
+    m_agent, pipe = _real_agent_and_mock_pipeline(isolated_env)
+    common = dict(session_factory=isolated_env["session_factory"], config=isolated_env["config"],
+                  monitoring_agent=m_agent, pipeline=pipe)
+    v1 = handle_source_pdf_upload("guideline_2025.pdf", isolated_env["valid_pdf_bytes"], **common)
+    v2_bytes = make_multipage_pdf_bytes([[
+        "1. Clinical Guideline Section",
+        "Adult patients with type 2 diabetes should initiate metformin 500mg twice daily.",
+    ]])
+    v2 = handle_source_pdf_upload(
+        "totally_different_name.pdf", v2_bytes,
+        existing_source_identifier=v1["source_identifier"], **common,
+    )
+
+    assert v2["source_identifier"] == v1["source_identifier"]
+    assert v2["source_version"] == "2.0"
+    with isolated_env["session_factory"]() as session:
+        d2 = session.get(IngestedDocument, v2["document_id"])
+        assert d2.previous_source_version_id == v1["document_id"]
+        assert d2.doc_metadata["input_type"] == "pdf_upload"
+        assert d2.doc_metadata["original_filename"] == "totally_different_name.pdf"
+
+
+def test_upload_to_unknown_source_is_rejected(isolated_env):
+    from app.services.source_ingestion_service import UnknownSourceError
+
+    m_agent, pipe = _real_agent_and_mock_pipeline(isolated_env)
+    with pytest.raises(UnknownSourceError):
+        handle_source_pdf_upload(
+            "x.pdf", isolated_env["valid_pdf_bytes"],
+            session_factory=isolated_env["session_factory"], config=isolated_env["config"],
+            monitoring_agent=m_agent, pipeline=pipe, existing_source_identifier="pdf_doesnotexist",
+        )
+
+
+def test_scanned_pdf_upload_fails_visibly(isolated_env):
+    import pypdfium2 as pdfium
+    from app.models.entities import IngestionFailure
+    from app.services.source_documents import UnreadableSourceError
+
+    blank = isolated_env["source_dir"].parent / "blank.pdf"
+    doc = pdfium.PdfDocument.new()
+    doc.new_page(width=200, height=200)
+    doc.save(str(blank))
+    doc.close()
+
+    m_agent, pipe = _real_agent_and_mock_pipeline(isolated_env)
+    with pytest.raises(UnreadableSourceError, match="unreadable_needs_ocr"):
+        handle_source_pdf_upload(
+            "scan.pdf", blank.read_bytes(),
+            session_factory=isolated_env["session_factory"], config=isolated_env["config"],
+            monitoring_agent=m_agent, pipeline=pipe,
+        )
+    assert not pipe.process_document.called
+    with isolated_env["session_factory"]() as session:
+        assert session.query(IngestionFailure).one().error_category == "UnreadableSourceError"

@@ -66,6 +66,13 @@ from app.services.file_hash import compute_sha256
 from app.services.pdf_parser import extract_page_texts
 from app.services.protocol_index import parse_protocol_file
 from app.services.reviewer_authorization import ReviewerAuthorizationService
+from app.services.source_documents import UnreadableSourceError
+from app.services.source_ingestion_service import (
+    SourceIngestionService,
+    UnknownSourceError,
+    sanitize_filename,
+    save_uploaded_pdf,
+)
 from app.services.url_ingestion_service import (
     ContentChallengeError,
     EmptyContentError,
@@ -195,6 +202,9 @@ def get_source_documents(session_factory: sessionmaker[Session]) -> List[Dict[st
                 "change_records_count": len(d.change_records) if d.change_records else 0,
                 "retrieval_provider": _retrieval_provider_label(d.doc_metadata),
                 "routing_decision": (d.doc_metadata or {}).get("routing_decision"),
+                "title": (d.doc_metadata or {}).get("title"),
+                "input_type": (d.doc_metadata or {}).get("input_type"),
+                "source_diff": (d.doc_metadata or {}).get("source_diff"),
                 "resolved_source_url": (d.doc_metadata or {}).get("resolved_source_url"),
                 "provider_warnings": (d.doc_metadata or {}).get("provider_warnings") or [],
             }
@@ -646,76 +656,6 @@ def load_evaluation_reports(reports_dir: Optional[Path] = None) -> Dict[str, Any
     return reports
 
 
-def sanitize_filename(filename: str) -> str:
-    """Safely sanitize an uploaded filename to prevent traversal and preserve .pdf.
-
-    Enforces that:
-    1. Input is non-empty.
-    2. Any directory path prefixes (e.g. '../', absolute paths, backslashes) are stripped.
-    3. Traversal tokens are explicitly rejected/stripped.
-    4. Suffix strictly ends with '.pdf' (case-insensitive).
-    5. Stem is sanitized to safe characters (alphanumeric, underscore, hyphen, dot).
-    """
-    if not filename or not filename.strip():
-        raise ValueError("Uploaded filename cannot be empty.")
-
-    # Strip directory parts to isolate basename
-    base_name = Path(filename).name.strip()
-    base_name = base_name.replace("/", "").replace("\\", "").replace("..", "")
-
-    if not base_name.lower().endswith(".pdf"):
-        raise ValueError(f"Only PDF files are accepted. Invalid filename: '{filename}'.")
-
-    stem = base_name[:-4]
-    clean_stem = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", stem).strip("._-")
-    if not clean_stem:
-        clean_stem = "clinical_source"
-
-    return f"{clean_stem}.pdf"
-
-
-def save_uploaded_pdf(
-    file_bytes: bytes,
-    filename: str,
-    source_dir: Union[str, Path],
-) -> Path:
-    """Safely save uploaded PDF bytes into the authorized source directory.
-
-    Guarantees:
-    - Target directory exists.
-    - Path traversal is strictly blocked.
-    - Uploaded files are written only into source_dir (never protocols, chroma, etc.).
-    - Preserves .pdf extension.
-    - Prevents overwriting unrelated files if a different file shares the name.
-    """
-    if not file_bytes:
-        raise ValueError("Uploaded PDF file is empty (0 bytes).")
-
-    safe_name = sanitize_filename(filename)
-    target_dir = Path(source_dir).resolve()
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    dest_path = (target_dir / safe_name).resolve()
-
-    # Path traversal assertion: parent must be target_dir
-    if dest_path.parent != target_dir:
-        raise ValueError(f"Security error: path traversal detected for filename '{filename}'.")
-
-    # If file exists, check hash to avoid overwriting unrelated file
-    if dest_path.exists():
-        existing_hash = compute_sha256(dest_path)
-        new_hash = hashlib.sha256(file_bytes).hexdigest()
-        if existing_hash != new_hash:
-            # Different file with same name: append short hash to prevent overwriting unrelated file
-            stem = dest_path.stem
-            dest_path = (target_dir / f"{stem}_{new_hash[:8]}.pdf").resolve()
-            if dest_path.parent != target_dir:
-                raise ValueError("Security error: path traversal detected.")
-
-    dest_path.write_bytes(file_bytes)
-    return dest_path
-
-
 def handle_source_pdf_upload(
     uploaded_name: str,
     uploaded_bytes: bytes,
@@ -723,132 +663,19 @@ def handle_source_pdf_upload(
     config: Optional[AppConfig] = None,
     monitoring_agent: Optional[MonitoringAgent] = None,
     pipeline: Optional[ClinicalKnowledgePipeline] = None,
+    existing_source_identifier: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Execute end-to-end ingestion and pipeline processing for an uploaded PDF.
-
-    Orchestrates:
-    1. Validates and saves PDF to data/sources/.
-    2. Invokes existing MonitoringAgent to scan and ingest.
-    3. Invokes existing ClinicalKnowledgePipeline for state-aware progression.
-    4. Preserves all safety gates (G1, G2, G3, G4, G5).
-    5. Zero automated clinical decisions, zero new LLM clients.
-    """
-    cfg = config or load_config()
-
-    # 1. Save PDF to source_dir
-    saved_path = save_uploaded_pdf(
-        file_bytes=uploaded_bytes,
-        filename=uploaded_name,
-        source_dir=cfg.source_dir,
-    )
-    file_hash = compute_sha256(saved_path)
-
-    # 2. Invoke existing MonitoringAgent
-    m_agent = monitoring_agent or MonitoringAgent(
-        source_dir=cfg.source_dir,
+    """UI entry point for PDF uploads; all orchestration lives in SourceIngestionService."""
+    return SourceIngestionService(
         session_factory=session_factory,
-        config=cfg,
+        config=config or load_config(),
+        monitoring_agent=monitoring_agent,
+        pipeline=pipeline,
+    ).ingest_pdf_upload(
+        uploaded_name=uploaded_name,
+        uploaded_bytes=uploaded_bytes,
+        existing_source_identifier=existing_source_identifier,
     )
-    scan_result = m_agent.scan()
-
-    # 3. Invoke existing ClinicalKnowledgePipeline
-    pipe = pipeline or ClinicalKnowledgePipeline(
-        session_factory=session_factory,
-        config=cfg,
-        monitoring_agent=m_agent,
-    )
-    pipe_result = pipe.process_document(saved_path)
-
-    # 4. Fetch document record from DB for complete metadata
-    doc_id = pipe_result.artifacts.document_id
-    doc_status = "unknown"
-    doc_version = "1.0"
-    with session_factory() as session:
-        doc = None
-        if doc_id:
-            doc = session.get(IngestedDocument, doc_id)
-        if not doc:
-            doc = (
-                session.query(IngestedDocument)
-                .filter_by(sha256_hash=file_hash)
-                .order_by(IngestedDocument.created_at.desc())
-                .first()
-            )
-        if doc:
-            doc_id = doc.id
-            doc_status = doc.status
-            doc_version = doc.source_version or doc.document_version
-
-    # 5. Determine human gate status & user-facing message
-    held_gate = pipe_result.held_gate
-    gate_str = held_gate.value if held_gate else None
-    current_stage_str = pipe_result.current_stage.value if pipe_result.current_stage else "monitoring"
-
-    if pipe_result.is_held:
-        if held_gate == HumanGate.G1:
-            msg = "Document ingestion complete. Processing paused at G1 (Pipeline is HELD) — human extraction review required (No actionable clinical recommendation could be confidently extracted)."
-        elif held_gate == HumanGate.G2:
-            msg = "Document uploaded successfully. Processing paused at G2 — comparison review required."
-        elif held_gate == HumanGate.G3:
-            msg = "No matching institutional protocol section found. G3 committee review required."
-        elif held_gate == HumanGate.G4:
-            msg = "Document uploaded successfully. Evidence brief prepared; awaiting G4 authorized clinical governance decision."
-        elif held_gate == HumanGate.G5:
-            msg = "Document uploaded successfully. Review SLA escalation active (G5 notice)."
-        else:
-            msg = f"Document uploaded successfully. Processing paused at {gate_str}."
-    elif pipe_result.is_completed:
-        msg = "Document uploaded and processed successfully."
-    elif pipe_result.is_failed:
-        msg = "Upload succeeded, but processing failed."
-    else:
-        msg = f"Document uploaded. Status: {pipe_result.status.value}."
-
-    return {
-        "success": not pipe_result.is_failed,
-        "input_type": "PDF",
-        "source_url": None,
-        "title": saved_path.stem.replace("_", " ").title(),
-        "filename": saved_path.name,
-        "saved_path": str(saved_path),
-        "document_id": doc_id,
-        "sha256_hash": file_hash,
-        "source_version": doc_version,
-        "document_status": doc_status,
-        "ingestion_status": "Complete",
-        "pipeline_status": pipe_result.status.value.capitalize(),
-        "current_stage": current_stage_str,
-        "gate_status": gate_str,
-        "pipeline_reason": pipe_result.reason,
-        "content_classification": "Direct Clinical PDF",
-        "extracted_text_size": len(uploaded_bytes),
-        "result_message": msg,
-        "pipeline_result": pipe_result,
-        "scan_result": scan_result,
-        "error": pipe_result.errors[0] if pipe_result.errors else None,
-    }
-
-
-def _record_url_ingestion_failure(
-    session_factory: sessionmaker[Session],
-    url: str,
-    error: Exception,
-) -> None:
-    """Persist a URL ingestion failure so it is visible to operators (never silently dropped)."""
-    try:
-        with session_factory() as session:
-            session.add(IngestionFailure(
-                source_path=url,
-                error_category=type(error).__name__,
-                error_message=str(error),
-                retry_count=0,
-                retry_status="not_retried",
-                operator_status="unresolved",
-                schema_version="1.0",
-            ))
-            session.commit()
-    except SQLAlchemyError:
-        logger.exception("Could not record ingestion failure for %s", url)
 
 
 def handle_source_url_upload(
@@ -859,155 +686,14 @@ def handle_source_url_upload(
     monitoring_agent: Optional[MonitoringAgent] = None,
     pipeline: Optional[ClinicalKnowledgePipeline] = None,
 ) -> Dict[str, Any]:
-    """Execute URL ingestion and downstream pipeline processing for a clinical source URL.
-
-    Orchestrates:
-    1. Validates and downloads/normalizes URL into a PDF in data/sources/.
-    2. Invokes existing MonitoringAgent to scan and ingest.
-    3. Invokes existing ClinicalKnowledgePipeline for state-aware progression.
-    4. Records source_url provenance in IngestedDocument metadata.
-    5. Preserves all safety gates (G1, G2, G3, G4, G5).
-    6. Zero automated decisions, zero direct LLM clients.
-    """
-    cfg = config or load_config()
-    service = url_service or URLIngestionService(config=cfg)
-
-    # 1. Ingest URL (PDF -> direct download; web page -> Jina Reader)
-    try:
-        ingestion_res = service.ingest_url(url=url, source_dir=cfg.source_dir)
-    except (URLIngestionError, ValueError) as ie:
-        _record_url_ingestion_failure(session_factory, url, ie)
-        if not isinstance(ie, ContentChallengeError):
-            raise
-        logger.warning("URL ingestion rejected due to bot challenge: %s", ie)
-        cce = ie
-        return {
-            "success": False,
-            "input_type": "URL",
-            "source_url": url,
-            "ingestion_status": "Failed (Challenge Detected)",
-            "pipeline_status": "Blocked",
-            "gate_status": "Ingestion Failed",
-            "result_message": str(cce),
-            "usable_clinical_content": False,
-            "pipeline_reason": "Source returned browser/access challenge instead of article content.",
-            "error": "The source website presented an anti-bot challenge, captcha, or cookie wall. Content was rejected by clinical ingestion policy.",
-        }
-
-    saved_path = ingestion_res.saved_path
-    file_hash = ingestion_res.content_sha256
-
-    # 2. Invoke existing MonitoringAgent
-    m_agent = monitoring_agent or MonitoringAgent(
-        source_dir=cfg.source_dir,
+    """UI entry point for URL sources; all orchestration lives in SourceIngestionService."""
+    return SourceIngestionService(
         session_factory=session_factory,
-        config=cfg,
-    )
-    import hashlib
-    stable_source_id = f"url_{hashlib.sha256(url.strip().encode('utf-8')).hexdigest()[:16]}"
-
-    doc_metadata = {
-        "source_url": url,
-        "original_source_url": url,
-        "source_type": "url",
-        "title": ingestion_res.page_title,
-        "is_direct_pdf": ingestion_res.is_direct_pdf,
-        "retrieval_timestamp": ingestion_res.retrieval_timestamp.isoformat(),
-        "content_sha256": file_hash,
-        "extracted_text_size": ingestion_res.extracted_text_size,
-        "content_classification": ingestion_res.content_classification,
-        **ingestion_res.provenance_metadata(),
-    }
-
-    scan_result = m_agent.ingest_known_file(
-        file_path=saved_path,
-        source_identifier=stable_source_id,
-        doc_metadata=doc_metadata,
-    )
-
-    if scan_result.skipped > 0:
-        return {
-            "success": True,
-            "input_type": "URL",
-            "source_url": url,
-            "ingestion_status": "Success",
-            "pipeline_status": "Complete",
-            "gate_status": "No Change",
-            "result_message": "No source change detected. Previous and current content hashes are identical.",
-            "usable_clinical_content": True,
-            "pipeline_reason": "No source change detected. Previous and current content hashes are identical.",
-            "document_id": None,
-        }
-
-    doc_id = scan_result.ingested_document_ids[0] if scan_result.ingested_document_ids else None
-
-    # 3. Invoke existing ClinicalKnowledgePipeline
-    pipe = pipeline or ClinicalKnowledgePipeline(
-        session_factory=session_factory,
-        config=cfg,
-        monitoring_agent=m_agent,
-    )
-    pipe_result = pipe.process_document(doc_id or saved_path)
-
-    doc_status = "unknown"
-    doc_version = "1.0"
-    if doc_id:
-        with session_factory() as session:
-            doc = session.get(IngestedDocument, doc_id)
-            if doc:
-                doc_status = doc.status
-                doc_version = doc.source_version or doc.document_version
-
-    # 5. Determine human gate status & user-facing message
-    held_gate = pipe_result.held_gate
-    gate_str = held_gate.value if held_gate else None
-    current_stage_str = pipe_result.current_stage.value if pipe_result.current_stage else "monitoring"
-
-    if pipe_result.is_held:
-        if held_gate == HumanGate.G1:
-            msg = "Document ingestion complete. Pipeline is HELD at G1 — human extraction review required (No actionable clinical recommendation could be confidently extracted)."
-        elif held_gate == HumanGate.G2:
-            msg = "Document retrieved from URL successfully. Processing paused at G2 — comparison review required."
-        elif held_gate == HumanGate.G3:
-            msg = "No matching institutional protocol section found. G3 committee review required."
-        elif held_gate == HumanGate.G4:
-            msg = "Document retrieved from URL successfully. Evidence brief prepared; awaiting G4 authorized clinical governance decision."
-        elif held_gate == HumanGate.G5:
-            msg = "Document retrieved from URL successfully. Review SLA escalation active (G5 notice)."
-        else:
-            msg = f"Document retrieved from URL successfully. Processing paused at {gate_str}."
-    elif pipe_result.is_completed:
-        msg = "Document retrieved from URL and processed successfully."
-    elif pipe_result.is_failed:
-        msg = "URL retrieval succeeded, but processing failed."
-    else:
-        msg = f"Document retrieved from URL. Status: {pipe_result.status.value}."
-
-    return {
-        "success": not pipe_result.is_failed,
-        "input_type": "URL",
-        "source_url": url,
-        "title": ingestion_res.page_title,
-        "filename": saved_path.name,
-        "saved_path": str(saved_path),
-        "document_id": doc_id,
-        "sha256_hash": file_hash,
-        "source_version": doc_version,
-        "document_status": doc_status,
-        "ingestion_status": "Complete",
-        "pipeline_status": pipe_result.status.value.capitalize(),
-        "current_stage": current_stage_str,
-        "gate_status": gate_str,
-        "pipeline_reason": pipe_result.reason,
-        "content_classification": ingestion_res.content_classification,
-        "extracted_text_size": ingestion_res.extracted_text_size,
-        "result_message": msg,
-        "resolved_source_url": ingestion_res.resolved_source_url,
-        "usable_clinical_content": True,
-        "pipeline_result": pipe_result,
-        "scan_result": scan_result,
-        "error": pipe_result.errors[0] if pipe_result.errors else None,
-    }
+        config=config or load_config(),
+        url_service=url_service,
+        monitoring_agent=monitoring_agent,
+        pipeline=pipeline,
+    ).ingest_url(url)
 
 
 # ==============================================================================
@@ -1719,6 +1405,22 @@ def render_sources_view(
                 with col_p2:
                     upload_clicked = st.button("Process Document", type="primary", use_container_width=True, key="upload_process_btn")
 
+                # Source identity is never the filename: the reviewer states whether this PDF
+                # starts a new source or is a new version of an existing one.
+                existing_sources = {
+                    d["source_identifier"]: d for d in get_source_documents(session_factory)
+                }
+                NEW_SOURCE = "New source"
+                target_source = st.selectbox(
+                    "Source",
+                    options=[NEW_SOURCE] + list(existing_sources),
+                    format_func=lambda sid: sid if sid == NEW_SOURCE else (
+                        f"New version of: {existing_sources[sid].get('title') or sid} "
+                        f"(v{existing_sources[sid]['source_version']})"
+                    ),
+                    key="upload_target_source",
+                )
+
                 if upload_clicked:
                     if uploaded_file is None:
                         st.warning("Please select a PDF file to upload.")
@@ -1730,8 +1432,13 @@ def render_sources_view(
                                     uploaded_bytes=uploaded_file.getvalue(),
                                     session_factory=session_factory,
                                     config=cfg,
+                                    existing_source_identifier=None if target_source == NEW_SOURCE else target_source,
                                 )
                                 st.session_state["upload_result_info"] = res
+                            except UnreadableSourceError as ue:
+                                st.error(f"Unreadable PDF (recorded as an ingestion failure): {ue}")
+                            except UnknownSourceError as ue:
+                                st.error(str(ue))
                             except ValueError as ve:
                                 st.error(f"Validation Error: {ve}")
                             except Exception as e:
@@ -1844,6 +1551,29 @@ def render_sources_view(
                     st.write(f"**Resolved URL:** `{doc_item['resolved_source_url']}`")
                 for warning in doc_item.get("provider_warnings") or []:
                     st.warning(f"Retrieval provider warning: {warning}")
+
+        source_diff = doc_item.get("source_diff") or {}
+        if source_diff.get("changes"):
+            with st.expander("Source Evolution (previous version → this version)", expanded=False):
+                st.caption(
+                    "What changed in the external source itself. This is separate from the "
+                    "institutional protocol comparison."
+                )
+                for change in source_diff["changes"]:
+                    kind = change["change_type"].upper()
+                    heading = change["heading"]
+                    if change.get("old_heading"):
+                        heading = f"{change['old_heading']} → {heading}"
+                    st.markdown(f"**{kind}** · {html.escape(heading)}")
+                    if change["change_type"] == "removed":
+                        st.warning("Removed from the source; not re-extracted. Review whether the protocol relied on it.")
+                        st.text(change["old_text"][:1500])
+                    elif change["change_type"] == "modified":
+                        c_old, c_new = st.columns(2)
+                        c_old.text(change["old_text"][:1500])
+                        c_new.text(change["new_text"][:1500])
+                    else:
+                        st.text(change["new_text"][:1500])
             with t2:
                 st.write(f"**Current SHA-256:** `{doc_item['sha256_hash']}`")
                 prev_sha = doc_item.get("previous_sha256_hash")

@@ -74,7 +74,6 @@ from app.services.url_ingestion_service import (
     derive_safe_filename_from_url,
     detect_content_challenge,
     fetch_url_content,
-    normalize_html_to_pdf_bytes,
     validate_source_url,
 )
 from app.ui.streamlit_app import (
@@ -282,7 +281,9 @@ def test_html_url_handled(isolated_env):
     assert res.retrieval_provider == "Jina Reader"
     assert jina.calls == [html_url]
     assert res.saved_path.exists()
-    assert res.saved_path.suffix == ".pdf"
+    assert res.saved_path.suffix == ".md"
+    assert res.artifact_format == "markdown"
+    assert res.saved_path.read_text(encoding="utf-8") == "Mocked markdown content from Jina Reader for testing"
     assert res.file_size_bytes > 0
 
 

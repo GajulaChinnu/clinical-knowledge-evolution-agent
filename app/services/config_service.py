@@ -38,6 +38,7 @@ class AppConfig(BaseModel):
     url_probe_timeout_seconds: float = Field(default=10.0, gt=0)
     url_download_timeout_seconds: float = Field(default=30.0, gt=0)
     max_download_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
+    max_source_chars: int = Field(default=1_000_000, gt=0)
     allow_private_hosts: bool = Field(default=False)
 
     # Storage & Database
@@ -124,6 +125,7 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "URL_PROBE_TIMEOUT_SECONDS": ("url_probe_timeout_seconds", float),
     "URL_DOWNLOAD_TIMEOUT_SECONDS": ("url_download_timeout_seconds", float),
     "MAX_DOWNLOAD_BYTES": ("max_download_bytes", int),
+    "MAX_SOURCE_CHARS": ("max_source_chars", int),
     "ALLOW_PRIVATE_HOSTS": ("allow_private_hosts", _parse_bool),
     "DATABASE_URL": ("database_url", str),
     "SOURCE_DIR": ("source_dir", Path),

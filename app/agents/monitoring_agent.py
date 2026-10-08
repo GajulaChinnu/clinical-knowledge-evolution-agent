@@ -1,4 +1,10 @@
-"""CKEA Monitoring Agent for local synthetic PDF discovery, hashing, and ingestion."""
+"""CKEA Monitoring Agent: source discovery, hashing, versioning and ingestion.
+
+Versioning is driven by the SHA-256 of the canonical normalized text, so re-exported PDFs
+or re-fetched pages with identical content are no-ops, while any content change against
+the latest version creates a new immutable version linked to its predecessor. The raw
+artifact SHA-256 is kept for integrity.
+"""
 
 from dataclasses import dataclass, field
 import logging
@@ -14,6 +20,7 @@ from app.schemas.documents import DocumentStatus
 from app.schemas.transitions import DOCUMENT_TRANSITIONS, validate_transition
 from app.services.config_service import AppConfig, load_config
 from app.services.file_hash import compute_sha256
+from app.services.source_documents import artifact_format, content_sha256, load_source_text
 
 logger = logging.getLogger("ckea.monitoring")
 
@@ -183,8 +190,11 @@ class MonitoringAgent:
         """Core logic to process a file given a specific source identifier."""
 
         try:
-            # 1. Compute SHA-256 hash of file contents
+            # 1. Compute SHA-256 of the raw artifact (integrity) and of the canonical
+            #    normalized text (versioning). Unreadable sources raise here.
             file_hash = compute_sha256(file_path)
+            fmt = artifact_format(file_path)
+            normalized_hash = content_sha256(load_source_text(file_path))
 
             # 2. Query existing documents for this source_identifier
             stmt = (
@@ -194,16 +204,19 @@ class MonitoringAgent:
             )
             existing_docs = session.scalars(stmt).all()
 
-            # 3. Check for unchanged content (idempotency check)
-            matching_existing = [
-                d for d in existing_docs
-                if d.sha256_hash == file_hash and d.status != DocumentStatus.FAILED.value
-            ]
-            if matching_existing:
+            # 3. Idempotency: unchanged relative to the latest non-failed version
+            latest_valid = next(
+                (d for d in existing_docs if d.status != DocumentStatus.FAILED.value), None
+            )
+            if latest_valid is not None and (
+                latest_valid.sha256_hash == file_hash
+                or (latest_valid.doc_metadata or {}).get("normalized_content_sha256") == normalized_hash
+            ):
                 logger.info(
-                    "File skipped (unchanged content): %s (SHA-256: %s)",
+                    "File skipped (unchanged content): %s (SHA-256: %s, normalized: %s)",
                     file_path.name,
                     file_hash[:8],
+                    normalized_hash[:8],
                 )
                 result.skipped += 1
                 return
@@ -217,28 +230,35 @@ class MonitoringAgent:
                 next_version = "1.0"
             else:
                 next_version = self._get_next_version([d.document_version for d in existing_docs])
-                latest_existing = existing_docs[0]
+                latest_existing = latest_valid or existing_docs[0]
                 previous_source_version_id = latest_existing.id
                 previous_sha256_hash = latest_existing.sha256_hash
                 change_status = "changed"
 
-            # 5. Validate PDF readability via pdfplumber
-            with pdfplumber.open(file_path) as pdf:
-                page_count = len(pdf.pages)
-                if page_count == 0:
-                    raise ValueError(f"PDF file contains 0 pages: {file_path.name}")
-                raw_meta = pdf.metadata or {}
-                clean_meta: Dict[str, Any] = {
-                    str(k): str(v) for k, v in raw_meta.items() if v is not None
-                }
+            # 5. Artifact metadata (PDF structure when applicable)
+            page_count = 1
+            clean_meta: Dict[str, Any] = {}
+            if fmt == "pdf":
+                with pdfplumber.open(file_path) as pdf:
+                    page_count = len(pdf.pages)
+                    if page_count == 0:
+                        raise ValueError(f"PDF file contains 0 pages: {file_path.name}")
+                    raw_meta = pdf.metadata or {}
+                    clean_meta = {str(k): str(v) for k, v in raw_meta.items() if v is not None}
 
             combined_metadata = {
                 "page_count": page_count,
                 "file_size_bytes": file_path.stat().st_size,
                 "pdf_metadata": clean_meta,
+                "artifact_format": fmt,
+                "original_bytes_sha256": file_hash,
+                "normalized_content_sha256": normalized_hash,
             }
             if doc_metadata:
-                combined_metadata.update(doc_metadata)
+                combined_metadata.update(
+                    {k: v for k, v in doc_metadata.items()
+                     if k not in ("original_bytes_sha256", "normalized_content_sha256", "artifact_format")}
+                )
 
             # 6. Instantiate and transition record
             doc = IngestedDocument(

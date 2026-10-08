@@ -78,7 +78,7 @@ def mock_pdf_text_extraction(monkeypatch):
                 text="Pharmacotherapy\nAdults with type 2 diabetes and CKD should receive an SGLT2 inhibitor.",
             )
         ]
-    monkeypatch.setattr("app.agents.extraction_agent.extract_page_texts", fake_extract_page_texts)
+    monkeypatch.setattr("app.services.source_documents.extract_page_texts", fake_extract_page_texts)
 
 
 @pytest.fixture

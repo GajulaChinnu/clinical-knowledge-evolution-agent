@@ -4,6 +4,8 @@ import hashlib
 import logging
 from pathlib import Path
 import pypdfium2 as pdfium
+
+from app.services.evaluation_corpus import make_multipage_pdf_bytes
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,7 +18,16 @@ from app.services.file_hash import compute_bytes_sha256, compute_sha256
 
 
 def create_sample_pdf(file_path: Path, pages: int = 1) -> Path:
-    """Helper to generate a valid test PDF file."""
+    """Helper to generate a valid text PDF; content depends on the page count."""
+    file_path.write_bytes(make_multipage_pdf_bytes([
+        [f"Section {n}: Clinical Guidance", f"{file_path.stem}: adults should receive guideline therapy (page {n} of {pages})."]
+        for n in range(1, pages + 1)
+    ]))
+    return file_path
+
+
+def create_blank_pdf(file_path: Path, pages: int = 1) -> Path:
+    """Helper to generate a text-less (scanned/image-only style) PDF."""
     pdf = pdfium.PdfDocument.new()
     for _ in range(pages):
         pdf.new_page(width=200, height=200)
@@ -267,3 +278,15 @@ def test_sensitive_configuration_not_logged(temp_env, caplog):
         agent.scan()
 
     assert secret_key not in caplog.text, "Secret API key was found in log output!"
+
+
+def test_text_less_pdf_is_recorded_as_unreadable(temp_env):
+    """Scanned/image-only PDFs are not guessed at: they fail visibly as needing OCR."""
+    create_blank_pdf(temp_env["source_dir"] / "scanned.pdf", pages=2)
+    result = temp_env["agent"].scan()
+    assert result.failed == 1 and result.new == 0
+
+    with temp_env["session_factory"]() as session:
+        failure = session.query(IngestionFailure).one()
+        assert failure.error_category == "UnreadableSourceError"
+        assert "unreadable_needs_ocr" in failure.error_message

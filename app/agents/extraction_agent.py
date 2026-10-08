@@ -13,14 +13,10 @@ from app.schemas.extraction import ExtractionResponse
 from app.schemas.transitions import DOCUMENT_TRANSITIONS, validate_transition
 from app.services.config_service import AppConfig, load_config
 from app.services.llm_client import SharedLLMClient
-from app.services.pdf_parser import (
-    detect_document_sections,
-    extract_page_texts,
-    filter_candidate_sections,
-    DocumentSection,
-)
+from app.services.pdf_parser import filter_candidate_sections, DocumentSection
+from app.services.source_documents import load_source_sections
 from app.services.source_verifier import verify_recommendation_provenance
-from app.services.source_version_diff import SourceVersionDiffService, ChangedSection
+from app.services.source_version_diff import SourceVersionDiffService
 
 logger = logging.getLogger("ckea.extraction")
 
@@ -71,33 +67,43 @@ class ExtractionAgent:
                 doc.status = DocumentStatus.PROCESSING.value
                 session.commit()
 
-            # 2. Extract text and detect sections locally
-            page_texts = extract_page_texts(doc.source_path)
-            sections = detect_document_sections(page_texts)
+            # 2. Load sections from the stored artifact (PDF or normalized web text)
+            sections = load_source_sections(doc.source_path)
 
             # 3. Handle version differencing if previous version exists
             if doc.previous_source_version_id:
                 old_doc = session.get(IngestedDocument, doc.previous_source_version_id)
                 if old_doc:
                     logger.info("Previous version found (%s), performing diff.", old_doc.id)
-                    old_page_texts = extract_page_texts(old_doc.source_path)
-                    old_sections = detect_document_sections(old_page_texts)
-                    
+                    old_sections = load_source_sections(old_doc.source_path)
+
                     diff_service = SourceVersionDiffService()
                     changes = diff_service.diff_sections(old_sections, sections)
-                    
+
+                    # Source-evolution artifact (v(n-1) -> v(n)); kept separate from the
+                    # institutional protocol comparison. Removals are recorded, not dropped.
+                    doc.doc_metadata = {
+                        **(doc.doc_metadata or {}),
+                        "source_diff": {
+                            "previous_document_id": old_doc.id,
+                            "changes": [c.to_dict() for c in changes],
+                        },
+                    }
+                    session.commit()
+
                     sec_map = {s.section_heading: s for s in sections}
                     diffed_sections = []
                     for c in changes:
                         if c.change_type in ("added", "modified"):
                             original_sec = sec_map.get(c.heading)
-                            page_num = original_sec.page_number if original_sec else 1
                             diffed_sections.append(DocumentSection(
-                                page_number=page_num,
+                                page_number=original_sec.page_number if original_sec else 1,
                                 section_heading=c.heading,
                                 text=c.new_text,
+                                char_start=original_sec.char_start if original_sec else None,
+                                char_end=original_sec.char_end if original_sec else None,
                             ))
-                    
+
                     candidate_sections = filter_candidate_sections(diffed_sections)
                     logger.info(
                         "Document %s: %d total section(s), %d changed section(s), %d candidate section(s) selected for extraction.",
@@ -197,6 +203,13 @@ class ExtractionAgent:
 
             # 9. Update document lifecycle state
             if any(c.status == ChangeStatus.HELD_FOR_G1.value for c in created_records) or not created_records:
+                if not created_records:
+                    logger.warning(
+                        "Document %s held for G1: no recommendation extracted from %d section(s) / %d candidate(s).",
+                        doc.id,
+                        len(sections),
+                        len(candidate_sections),
+                    )
                 if doc.status == DocumentStatus.PROCESSING.value:
                     validate_transition(
                         doc.status,

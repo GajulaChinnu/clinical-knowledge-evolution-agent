@@ -4,11 +4,12 @@ Routing (source-agnostic; no site-specific handling):
 1. Validate the URL (HTTP/HTTPS only) and block private/loopback/link-local targets
    unless ALLOW_PRIVATE_HOSTS is explicitly enabled (local demo only).
 2. Probe the content type (HEAD, falling back to a small ranged GET).
-3. PDF   -> direct download (size-capped) -> existing PDF path.
-   Other -> Jina Reader ONLY. Web pages are never fetched directly, and bot-challenge
-   detection runs only on the retrieval provider's output.
+3. PDF   -> direct download (size-capped) -> stored as .pdf.
+   Other -> Jina Reader ONLY -> stored as UTF-8 Markdown (.md), never re-encoded or
+   truncated. Web pages are never fetched directly, and bot-challenge detection runs only
+   on the retrieval provider's output.
    Private host + ALLOW_PRIVATE_HOSTS -> direct local fetch (Jina cannot reach it).
-4. Normalized content is persisted under data/sources/ with full retrieval provenance.
+4. Artifacts are persisted under data/sources/ with full retrieval provenance.
 
 Walled sources (login, CAPTCHA, bot-check) fail safely; protection is never bypassed.
 Zero LLM calls in the ingestion service.
@@ -24,14 +25,12 @@ import logging
 from pathlib import Path
 import re
 import socket
-import textwrap
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 import urllib.parse
 
 import httpx
 
 from app.services.config_service import AppConfig, load_config
-from app.services.evaluation_corpus import make_multipage_pdf_bytes
 from app.services.jina_reader_service import JinaReaderError, JinaReaderService
 
 logger = logging.getLogger("ckea.services.url_ingestion")
@@ -94,6 +93,7 @@ class URLIngestionResult:
     resolved_source_url: Optional[str] = None
     retrieval_provider: str = "Direct HTTP"
     routing_decision: str = "pdf_direct"
+    artifact_format: str = "pdf"
     probe_status_code: Optional[int] = None
     probe_content_type: Optional[str] = None
     probe_error: Optional[str] = None
@@ -165,6 +165,7 @@ def derive_safe_filename_from_url(
     content_hash: str,
     is_pdf: bool = False,
     max_slug_len: int = 40,
+    extension: str = ".pdf",
 ) -> str:
     """Derive a safe, traversal-free filename from a URL.
 
@@ -175,7 +176,7 @@ def derive_safe_filename_from_url(
         max_slug_len: Maximum length of the slug prefix.
 
     Returns:
-        Safe filename ending in '.pdf'.
+        Safe filename ending in `extension` ('.pdf' or '.md').
     """
     parsed = urllib.parse.urlparse(url.strip())
     path_name = Path(parsed.path).name.strip()
@@ -187,7 +188,7 @@ def derive_safe_filename_from_url(
         clean_stem = re.sub(r"_+", "_", clean_stem)[:max_slug_len]
         if not clean_stem:
             clean_stem = "source_guideline"
-        return f"{clean_stem}_{content_hash[:8]}.pdf"
+        return f"{clean_stem}_{content_hash[:8]}{extension}"
 
     # Otherwise, generate a slug from domain and path
     slug_base = f"{parsed.netloc}_{parsed.path.strip('/')}"
@@ -196,7 +197,7 @@ def derive_safe_filename_from_url(
     if not clean_slug:
         clean_slug = "clinical_source"
 
-    return f"{clean_slug}_{content_hash[:8]}.pdf"
+    return f"{clean_slug}_{content_hash[:8]}{extension}"
 
 
 # ==============================================================================
@@ -375,129 +376,29 @@ class HTMLClinicalTextExtractor(html.parser.HTMLParser):
         return "Web Page Content"
 
 
-def normalize_html_to_pdf_bytes(
-    html_content: str,
-    source_url: str,
-    retrieval_timestamp: datetime,
-    max_lines_per_page: int = 36,
-    max_pages: int = 25,
-) -> Tuple[bytes, HTMLClinicalTextExtractor]:
-    """Normalize HTML content into a standard PDF representation with clinical provenance.
-
-    Args:
-        html_content: Raw HTML text.
-        source_url: Original source URL.
-        retrieval_timestamp: Timestamp when the page was retrieved.
-        max_lines_per_page: Line limit per PDF page.
-        max_pages: Maximum pages to generate from web HTML to prevent unbounded PDFs.
-
-    Returns:
-        Tuple of (pdf_bytes, extractor_instance).
+def html_to_markdown_text(html_content: str, source_url: str) -> Tuple[str, HTMLClinicalTextExtractor]:
+    """Convert HTML into Markdown-style text (headings as '##'); local demo route only.
 
     Raises:
-        EmptyContentError: If no readable text blocks could be extracted.
+        EmptyContentError: If no readable text could be extracted.
     """
     extractor = HTMLClinicalTextExtractor()
     try:
         extractor.feed(html_content)
         extractor.close()
-    except Exception as e:
+    except Exception as e:  # html.parser is lenient; anything raised here is logged and parsing continues
         logger.warning("HTML parsing warning for '%s': %s", source_url, e)
 
     if not extractor.sections:
-        # Fallback regex strip if parser returned no sections
-        clean_text = re.sub(r"<[^>]+>", " ", html_content)
-        clean_text = html_lib.unescape(clean_text).strip()
-        if not clean_text:
-            raise EmptyContentError(f"No readable clinical text could be extracted from HTML at '{source_url}'.")
-        raw_paras = [p.strip() for p in clean_text.splitlines() if p.strip()]
-        extractor.sections = [(False, p) for p in raw_paras]
-
+        clean_text = html_lib.unescape(re.sub(r"<[^>]+>", " ", html_content)).strip()
+        extractor.sections = [(False, p.strip()) for p in clean_text.splitlines() if p.strip()]
     if not extractor.sections:
-        raise EmptyContentError(f"No readable text blocks found in HTML from '{source_url}'.")
+        raise EmptyContentError(f"No readable text could be extracted from HTML at '{source_url}'.")
 
-    # Build line stream with provenance header on Page 1
-    lines_pool: List[str] = [
-        "1. Clinical Guideline Source Document (Retrieved via Web URL)",
-        f"Source URL: {source_url}",
-        f"Retrieved: {retrieval_timestamp.isoformat()}",
-        f"Title: {extractor.page_title or 'Untitled Source'}",
-        "=" * 70,
-        "",
-    ]
-
-    heading_idx = 1
+    blocks: List[str] = []
     for is_heading, text_block in extractor.sections:
-        if is_heading:
-            heading_idx += 1
-            # Format as deterministic heading line recognized by detect_document_sections
-            heading_line = f"Section {heading_idx}: {text_block[:70]}"
-            lines_pool.append("")
-            lines_pool.append(heading_line)
-            lines_pool.append("-" * min(len(heading_line), 70))
-        else:
-            wrapped = textwrap.wrap(text_block, width=72)
-            lines_pool.extend(wrapped)
-            lines_pool.append("")
-
-    # Paginate into pages
-    pages: List[List[str]] = []
-    current_page: List[str] = []
-    for line in lines_pool:
-        current_page.append(line)
-        if len(current_page) >= max_lines_per_page:
-            pages.append(current_page)
-            current_page = []
-
-    if current_page:
-        pages.append(current_page)
-
-    if not pages:
-        raise EmptyContentError(f"Constructed 0 pages for HTML document from '{source_url}'.")
-
-    # Bound maximum pages for web HTML documents
-    if len(pages) > max_pages:
-        pages = pages[:max_pages]
-        pages[-1].append("[Notice: Source document content truncated to 25 pages for clinical processing]")
-
-    return make_multipage_pdf_bytes(pages), extractor
-
-
-def normalize_text_to_pdf_bytes(
-    text: str,
-    source_url: str,
-    title: Optional[str],
-    provider_label: str,
-    max_lines_per_page: int = 36,
-    max_pages: int = 25,
-) -> bytes:
-    """Render provider-normalized text into the PDF representation consumed downstream.
-
-    The header deliberately excludes the retrieval timestamp so unchanged content
-    produces an identical SHA-256 (idempotent versioning).
-    """
-    lines_pool: List[str] = [
-        f"1. Clinical Guideline Source Document (Retrieved via {provider_label})",
-        f"Source URL: {source_url}",
-        f"Title: {title or 'Untitled Source'}",
-        "=" * 70,
-        "",
-    ]
-    for line in text.splitlines():
-        if not line.strip():
-            lines_pool.append("")
-        else:
-            lines_pool.extend(textwrap.wrap(line, width=72))
-
-    pages: List[List[str]] = [
-        lines_pool[i:i + max_lines_per_page] for i in range(0, len(lines_pool), max_lines_per_page)
-    ]
-    if not pages:
-        raise EmptyContentError(f"Constructed 0 pages for document from '{source_url}'.")
-    if len(pages) > max_pages:
-        pages = pages[:max_pages]
-        pages[-1].append(f"[Notice: Source document content truncated to {max_pages} pages for clinical processing]")
-    return make_multipage_pdf_bytes(pages)
+        blocks.append(f"## {text_block}" if is_heading else text_block)
+    return "\n\n".join(blocks) + "\n", extractor
 
 
 # ==============================================================================
@@ -794,33 +695,43 @@ class URLIngestionService:
             )
 
             if probe.is_pdf:
-                pdf_bytes = self._download_pdf(probe.final_url, client, result)
+                artifact_bytes = self._download_pdf(probe.final_url, client, result)
             elif host_is_private:
-                pdf_bytes = self._retrieve_local_html(url, client, retrieval_ts, result)
+                artifact_bytes = self._retrieve_local_html(url, client, result)
             else:
-                pdf_bytes = self._retrieve_via_jina(url, result)
+                artifact_bytes = self._retrieve_via_jina(url, result)
         finally:
             if self._http_client is None:
                 client.close()
 
-        file_hash = hashlib.sha256(pdf_bytes).hexdigest()
-        filename = derive_safe_filename_from_url(url, content_hash=file_hash, is_pdf=probe.is_pdf)
+        file_hash = hashlib.sha256(artifact_bytes).hexdigest()
+        extension = ".pdf" if result.artifact_format == "pdf" else ".md"
+        filename = derive_safe_filename_from_url(url, content_hash=file_hash, is_pdf=probe.is_pdf, extension=extension)
         dest_path = (target_dir / filename).resolve()
         if dest_path.parent != target_dir:
             raise ValueError(f"Security error: path traversal detected for URL '{url}' (target: {dest_path})")
-        dest_path.write_bytes(pdf_bytes)
+        dest_path.write_bytes(artifact_bytes)
 
         result.saved_path = dest_path
         result.filename = dest_path.name
         result.content_sha256 = file_hash
-        result.file_size_bytes = len(pdf_bytes)
+        result.file_size_bytes = len(artifact_bytes)
 
         logger.info(
             "URL ingested: %s -> %s (routing=%s, provider=%s, bytes=%d, hash=%s...)",
             url, dest_path.name, result.routing_decision, result.retrieval_provider,
-            len(pdf_bytes), file_hash[:8],
+            len(artifact_bytes), file_hash[:8],
         )
         return result
+
+    def _encode_text_artifact(self, text: str, url: str) -> bytes:
+        if len(text) > self.config.max_source_chars:
+            raise ContentTooLargeError(
+                f"Normalized content from '{url}' is {len(text)} characters, above the "
+                f"{self.config.max_source_chars}-character limit (MAX_SOURCE_CHARS). "
+                "Nothing was truncated; split the source or raise the limit after review."
+            )
+        return text.encode("utf-8")
 
     def _download_pdf(self, url: str, client: httpx.Client, result: URLIngestionResult) -> bytes:
         content_bytes, content_type, _ = fetch_url_content(
@@ -836,6 +747,7 @@ class URLIngestionService:
             raise EmptyContentError(f"URL was identified as PDF but does not contain valid PDF data: '{url}'")
         pdf_bytes = content_bytes[pdf_start:]
         result.routing_decision = "pdf_direct"
+        result.artifact_format = "pdf"
         result.retrieval_provider = "Direct HTTP"
         result.content_type = content_type or result.content_type
         result.content_classification = "Direct PDF Document"
@@ -873,11 +785,10 @@ class URLIngestionService:
 
         result.extracted_text_size = len(jina.content)
         result.content_classification = "Web Page Content"
-        return normalize_text_to_pdf_bytes(jina.content, url, jina.title, "Jina Reader")
+        result.artifact_format = "markdown"
+        return self._encode_text_artifact(jina.content, url)
 
-    def _retrieve_local_html(
-        self, url: str, client: httpx.Client, retrieval_ts: datetime, result: URLIngestionResult,
-    ) -> bytes:
+    def _retrieve_local_html(self, url: str, client: httpx.Client, result: URLIngestionResult) -> bytes:
         """Local demo only (ALLOW_PRIVATE_HOSTS): Jina's cloud service cannot reach private hosts."""
         content_bytes, content_type, _ = fetch_url_content(
             url,
@@ -888,9 +799,8 @@ class URLIngestionService:
             resolver=self.host_resolver,
         )
         html_text = content_bytes.decode("utf-8", errors="replace")
-        pdf_bytes, extractor = normalize_html_to_pdf_bytes(html_text, url, retrieval_ts)
-        body_text = " ".join(t for _, t in extractor.sections)
-        challenge = detect_content_challenge(body_text, title=extractor.page_title)
+        markdown, extractor = html_to_markdown_text(html_text, url)
+        challenge = detect_content_challenge(markdown, title=extractor.page_title)
         if challenge:
             raise ContentChallengeError(challenge)
         result.routing_decision = "local_direct_html"
@@ -900,4 +810,5 @@ class URLIngestionService:
         result.extracted_text_size = extractor.total_text_chars
         result.content_classification = extractor.content_classification
         result.resolved_source_url = url
-        return pdf_bytes
+        result.artifact_format = "markdown"
+        return self._encode_text_artifact(markdown, url)
