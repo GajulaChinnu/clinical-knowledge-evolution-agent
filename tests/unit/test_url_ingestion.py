@@ -30,10 +30,9 @@ from datetime import datetime, timezone
 import hashlib
 import inspect
 from pathlib import Path
-import socket
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
-import urllib.error
+import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -64,6 +63,7 @@ from app.schemas.orchestration import (
 from app.services.config_service import AppConfig
 from app.services.evaluation_corpus import make_multipage_pdf_bytes
 from app.services.file_hash import compute_sha256
+from app.services.jina_reader_service import JinaReaderService, JinaResult
 from app.services.url_ingestion_service import (
     ContentChallengeError,
     EmptyContentError,
@@ -141,6 +141,56 @@ def isolated_env(tmp_path: Path):
     engine.dispose()
 
 
+
+
+PUBLIC_RESOLVER = lambda host: ["93.184.216.34"]
+
+
+class FakeJina:
+    """Stand-in Jina provider recording every invocation."""
+
+    def __init__(self, content="", title="", warnings=None, error=None):
+        self.calls = []
+        self._content, self._title, self._warnings, self._error = content, title, warnings or [], error
+
+    is_configured = True
+
+    def retrieve(self, url):
+        self.calls.append(url)
+        if self._error:
+            raise self._error
+        return JinaResult(content=self._content, title=self._title, resolved_url=url,
+                          status_code=200, attempts=1, warnings=list(self._warnings))
+
+
+def make_url_service(config, handler, jina=None, resolver=PUBLIC_RESOLVER, **overrides):
+    """URLIngestionService with mocked HTTP transport, resolver and Jina provider."""
+    cfg = config.model_copy(update=overrides) if overrides else config
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    return URLIngestionService(
+        config=cfg,
+        jina_service=jina or FakeJina(),
+        http_client=client,
+        host_resolver=resolver,
+    )
+
+
+def pdf_handler(pdf_bytes):
+    def handler(request):
+        return httpx.Response(200, content=b"" if request.method == "HEAD" else pdf_bytes,
+                              headers={"content-type": "application/pdf"})
+    return handler
+
+
+def html_handler(html_bytes, status=200):
+    seen = []
+    def handler(request):
+        seen.append((request.method, str(request.url)))
+        return httpx.Response(status, content=b"" if request.method == "HEAD" else html_bytes,
+                              headers={"content-type": "text/html; charset=utf-8"})
+    handler.seen = seen
+    return handler
+
 # ==============================================================================
 # TEST 1: HTTPS URL ACCEPTED
 # ==============================================================================
@@ -202,22 +252,19 @@ def test_unsupported_scheme_rejected():
 # ==============================================================================
 
 def test_direct_pdf_url_handled(isolated_env):
-    service = URLIngestionService()
     pdf_url = "https://health.org/guidelines/metformin_2026.pdf"
+    jina = FakeJina()
+    service = make_url_service(isolated_env["config"], pdf_handler(isolated_env["valid_pdf_bytes"]), jina=jina)
 
-    with patch("app.services.url_ingestion_service.fetch_url_content") as mock_fetch:
-        mock_fetch.return_value = (
-            isolated_env["valid_pdf_bytes"],
-            "application/pdf",
-            {"Content-Type": "application/pdf"},
-        )
-
-        res = service.ingest_url(pdf_url, isolated_env["source_dir"])
-        assert res.is_direct_pdf is True
-        assert res.saved_path.exists()
-        assert res.saved_path.suffix == ".pdf"
-        assert res.saved_path.parent.resolve() == isolated_env["source_dir"].resolve()
-        assert res.content_sha256 == hashlib.sha256(isolated_env["valid_pdf_bytes"]).hexdigest()
+    res = service.ingest_url(pdf_url, isolated_env["source_dir"])
+    assert res.is_direct_pdf is True
+    assert res.routing_decision == "pdf_direct"
+    assert res.retrieval_provider == "Direct HTTP"
+    assert jina.calls == []
+    assert res.saved_path.exists()
+    assert res.saved_path.suffix == ".pdf"
+    assert res.saved_path.parent.resolve() == isolated_env["source_dir"].resolve()
+    assert res.content_sha256 == hashlib.sha256(isolated_env["valid_pdf_bytes"]).hexdigest()
 
 
 # ==============================================================================
@@ -225,28 +272,18 @@ def test_direct_pdf_url_handled(isolated_env):
 # ==============================================================================
 
 def test_html_url_handled(isolated_env):
-    service = URLIngestionService()
     html_url = "https://guidelines.org/diabetes/recommendations"
+    jina = FakeJina(content="Mocked markdown content from Jina Reader for testing", title="Mocked HTML Page")
+    service = make_url_service(isolated_env["config"], html_handler(isolated_env["sample_html"].encode()), jina=jina)
 
-    with patch("app.services.url_ingestion_service.fetch_url_content") as mock_fetch, \
-         patch("app.services.url_ingestion_service.JinaReaderService") as mock_jina:
-        mock_fetch.return_value = (
-            isolated_env["sample_html"].encode("utf-8"),
-            "text/html; charset=utf-8",
-            {"Content-Type": "text/html"},
-        )
-        mock_jina_instance = mock_jina.return_value
-        mock_jina_instance.retrieve_webpage.return_value = (
-            "Mocked markdown content from Jina Reader for testing",
-            "Mocked HTML Page",
-            html_url
-        )
-
-        res = service.ingest_url(html_url, isolated_env["source_dir"])
-        assert res.is_direct_pdf is False
-        assert res.saved_path.exists()
-        assert res.saved_path.suffix == ".pdf"
-        assert res.file_size_bytes > 0
+    res = service.ingest_url(html_url, isolated_env["source_dir"])
+    assert res.is_direct_pdf is False
+    assert res.routing_decision == "jina"
+    assert res.retrieval_provider == "Jina Reader"
+    assert jina.calls == [html_url]
+    assert res.saved_path.exists()
+    assert res.saved_path.suffix == ".pdf"
+    assert res.file_size_bytes > 0
 
 
 # ==============================================================================
@@ -254,22 +291,15 @@ def test_html_url_handled(isolated_env):
 # ==============================================================================
 
 def test_url_derived_file_saved_only_under_data_sources(isolated_env):
-    service = URLIngestionService()
     url = "https://org.org/guideline.pdf"
+    service = make_url_service(isolated_env["config"], pdf_handler(isolated_env["valid_pdf_bytes"]))
+    res = service.ingest_url(url, isolated_env["source_dir"])
+    assert res.saved_path.parent.resolve() == isolated_env["source_dir"].resolve()
 
-    with patch("app.services.url_ingestion_service.fetch_url_content") as mock_fetch:
-        mock_fetch.return_value = (
-            isolated_env["valid_pdf_bytes"],
-            "application/pdf",
-            {},
-        )
-        res = service.ingest_url(url, isolated_env["source_dir"])
-        assert res.saved_path.parent.resolve() == isolated_env["source_dir"].resolve()
-
-        # Verify not present in restricted directories
-        assert not (isolated_env["protocol_dir"] / res.filename).exists()
-        assert not (isolated_env["config"].chroma_dir / res.filename).exists()
-        assert not (isolated_env["config"].output_dir / res.filename).exists()
+    # Verify not present in restricted directories
+    assert not (isolated_env["protocol_dir"] / res.filename).exists()
+    assert not (isolated_env["config"].chroma_dir / res.filename).exists()
+    assert not (isolated_env["config"].output_dir / res.filename).exists()
 
 
 # ==============================================================================
@@ -295,17 +325,10 @@ def test_unsafe_url_derived_filename_prevented(isolated_env):
 # ==============================================================================
 
 def test_http_failure_handled():
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="https://site.org/404",
-            code=404,
-            msg="Not Found",
-            hdrs={},
-            fp=None,
-        )
-        with pytest.raises(HTTPFetchError) as exc_info:
-            fetch_url_content("https://site.org/404")
-        assert "404" in str(exc_info.value)
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(404)))
+    with pytest.raises(HTTPFetchError) as exc_info:
+        fetch_url_content("https://site.org/404", client=client, resolver=PUBLIC_RESOLVER)
+    assert "404" in str(exc_info.value)
 
 
 # ==============================================================================
@@ -313,11 +336,13 @@ def test_http_failure_handled():
 # ==============================================================================
 
 def test_timeout_handled():
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_urlopen.side_effect = socket.timeout("timed out")
-        with pytest.raises(HTTPFetchError) as exc_info:
-            fetch_url_content("https://slow.org/doc.pdf", timeout_seconds=1.0)
-        assert "timed out" in str(exc_info.value).lower()
+    def handler(request):
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(HTTPFetchError) as exc_info:
+        fetch_url_content("https://slow.org/doc.pdf", timeout_seconds=1.0, client=client, resolver=PUBLIC_RESOLVER)
+    assert "timed out" in str(exc_info.value).lower()
 
 
 # ==============================================================================
@@ -325,14 +350,9 @@ def test_timeout_handled():
 # ==============================================================================
 
 def test_empty_content_handled(isolated_env):
-    service = URLIngestionService()
-    with patch("app.services.url_ingestion_service.fetch_url_content") as mock_fetch, \
-         patch("app.services.url_ingestion_service.JinaReaderService") as mock_jina:
-        mock_fetch.return_value = (b"", "text/html", {})
-        mock_jina_instance = mock_jina.return_value
-        mock_jina_instance.retrieve_webpage.return_value = ("", "", "https://empty.org")
-        with pytest.raises(EmptyContentError):
-            service.ingest_url("https://empty.org", isolated_env["source_dir"])
+    service = make_url_service(isolated_env["config"], html_handler(b"<html></html>"), jina=FakeJina(content=""))
+    with pytest.raises(EmptyContentError):
+        service.ingest_url("https://empty.org", isolated_env["source_dir"])
 
 
 # ==============================================================================
@@ -922,22 +942,18 @@ def test_cookie_and_bot_challenge_detection():
     assert detect_content_challenge("Initial therapy with Metformin 500mg daily.") is None
 
 
-def test_content_challenge_raises_error_before_pdf(tmp_path: Path):
-    # 8. Challenge content raises ContentChallengeError and does NOT create a PDF
-    service = URLIngestionService()
-    challenge_html = b"<html><head><title>Challenge</title></head><body>Cookies must be enabled to view this page.</body></html>"
+def test_content_challenge_raises_error_before_pdf(isolated_env, tmp_path: Path):
+    out_dir = tmp_path / "challenge_out"
+    out_dir.mkdir()
+    # Challenge text returned by the retrieval provider raises and writes no file
+    jina = FakeJina(content="Cookies must be enabled to view this page.", title="Challenge")
+    service = make_url_service(isolated_env["config"], html_handler(b"<html></html>"), jina=jina)
 
-    with patch("app.services.url_ingestion_service.fetch_url_content") as mock_fetch:
-        mock_fetch.return_value = (challenge_html, "text/html", {})
-        with pytest.raises(ContentChallengeError) as exc_info:
-            service.ingest_url("https://example.com/blocked", source_dir=tmp_path)
+    with pytest.raises(ContentChallengeError) as exc_info:
+        service.ingest_url("https://example.com/blocked", source_dir=out_dir)
 
     assert "challenge" in str(exc_info.value).lower()
-    # Ensure no files written in source dir
-    assert list(tmp_path.iterdir()) == []
-
-
-
+    assert list(out_dir.iterdir()) == []
 
 
 def test_handle_source_url_upload_challenge_blocked_state(isolated_env):

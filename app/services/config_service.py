@@ -7,7 +7,7 @@ and secure handling of sensitive credentials.
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
 import os
-from dotenv import dotenv_values, load_dotenv
+from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -30,6 +30,15 @@ class AppConfig(BaseModel):
     groq_api_key: Optional[str] = Field(default=None, repr=False)
     groq_model: str = Field(default="openai/gpt-oss-20b")
     groq_base_url: str = Field(default="https://api.groq.com/openai/v1")
+
+    # Web Retrieval (Jina Reader + direct PDF download)
+    jina_api_key: Optional[str] = Field(default=None, repr=False)
+    jina_reader_base_url: str = Field(default="https://r.jina.ai")
+    jina_timeout_seconds: float = Field(default=45.0, gt=0)
+    url_probe_timeout_seconds: float = Field(default=10.0, gt=0)
+    url_download_timeout_seconds: float = Field(default=30.0, gt=0)
+    max_download_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
+    allow_private_hosts: bool = Field(default=False)
 
     # Storage & Database
     database_url: str = Field(default="sqlite:///./data/ckea.db")
@@ -68,10 +77,15 @@ class AppConfig(BaseModel):
             raise MissingAPIKeyError("GROQ_API_KEY is not set or empty. Please configure it in .env or environment.")
         return self.groq_api_key  # type: ignore
 
+    @property
+    def has_jina_api_key(self) -> bool:
+        """Check whether a non-empty Jina Reader API key is configured."""
+        return bool(self.jina_api_key and self.jina_api_key.strip())
+
     def __repr__(self) -> str:
         fields = []
         for k, v in self.__dict__.items():
-            if k == "groq_api_key":
+            if k in _SECRET_FIELDS:
                 val = "'[REDACTED]'" if v else "None"
             else:
                 val = repr(v)
@@ -84,14 +98,33 @@ class AppConfig(BaseModel):
     def to_safe_dict(self) -> Dict[str, Any]:
         """Return a dictionary representation with sensitive credentials masked."""
         data = self.model_dump()
-        data["groq_api_key"] = "[REDACTED]" if self.has_api_key else None
+        for key in _SECRET_FIELDS:
+            data[key] = "[REDACTED]" if data.get(key) else None
         return data
 
 
+_SECRET_FIELDS = ("groq_api_key", "jina_api_key")
+
+
+def _parse_bool(value: str) -> bool:
+    return str(value).strip().lower() in ("true", "1", "yes")
+
+
+def _optional_secret(value: str) -> Optional[str]:
+    return value.strip() if value and value.strip() else None
+
+
 _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
-    "GROQ_API_KEY": ("groq_api_key", lambda x: x.strip() if x and x.strip() else None),
+    "GROQ_API_KEY": ("groq_api_key", _optional_secret),
     "GROQ_MODEL": ("groq_model", str),
     "GROQ_BASE_URL": ("groq_base_url", str),
+    "JINA_API_KEY": ("jina_api_key", _optional_secret),
+    "JINA_READER_BASE_URL": ("jina_reader_base_url", str),
+    "JINA_TIMEOUT_SECONDS": ("jina_timeout_seconds", float),
+    "URL_PROBE_TIMEOUT_SECONDS": ("url_probe_timeout_seconds", float),
+    "URL_DOWNLOAD_TIMEOUT_SECONDS": ("url_download_timeout_seconds", float),
+    "MAX_DOWNLOAD_BYTES": ("max_download_bytes", int),
+    "ALLOW_PRIVATE_HOSTS": ("allow_private_hosts", _parse_bool),
     "DATABASE_URL": ("database_url", str),
     "SOURCE_DIR": ("source_dir", Path),
     "PROTOCOL_DIR": ("protocol_dir", Path),
@@ -102,7 +135,7 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "EXTRACTION_CONFIDENCE_THRESHOLD": ("extraction_confidence_threshold", float),
     "COMPARISON_CONFIDENCE_THRESHOLD": ("comparison_confidence_threshold", float),
     "PROTOCOL_SIMILARITY_THRESHOLD": ("protocol_similarity_threshold", float),
-    "SLA_SCHEDULER_ENABLED": ("sla_scheduler_enabled", lambda x: str(x).strip().lower() in ("true", "1", "yes")),
+    "SLA_SCHEDULER_ENABLED": ("sla_scheduler_enabled", _parse_bool),
     "SLA_CHECK_INTERVAL_MINUTES": ("sla_check_interval_minutes", int),
     "SLA_TIMEZONE": ("sla_timezone", str),
 }

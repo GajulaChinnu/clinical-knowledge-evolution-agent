@@ -26,6 +26,7 @@ if str(repo_root) not in sys.path:
 
 import streamlit as st
 from sqlalchemy import desc, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.agents.governance_agent import GovernanceAgent
@@ -38,6 +39,7 @@ from app.models.entities import (
     GapRecord,
     ImpactRecord,
     IngestedDocument,
+    IngestionFailure,
     Notification,
     ReviewAssignment,
 )
@@ -69,6 +71,7 @@ from app.services.url_ingestion_service import (
     EmptyContentError,
     HTTPFetchError,
     InvalidURLError,
+    URLIngestionError,
     URLIngestionResult,
     URLIngestionService,
 )
@@ -157,6 +160,13 @@ def get_dashboard_metrics(session_factory: sessionmaker[Session]) -> Dict[str, A
         }
 
 
+def _retrieval_provider_label(doc_metadata: Optional[Dict[str, Any]]) -> str:
+    meta = doc_metadata or {}
+    if meta.get("retrieval_provider"):
+        return meta["retrieval_provider"]
+    return "Direct HTTP" if meta.get("source_url") else "Local Upload"
+
+
 def get_source_documents(session_factory: sessionmaker[Session]) -> List[Dict[str, Any]]:
     """Retrieve all ingested synthetic clinical documents."""
     with session_factory() as session:
@@ -183,7 +193,10 @@ def get_source_documents(session_factory: sessionmaker[Session]) -> List[Dict[st
                 "ingest_timestamp": d.ingest_timestamp,
                 "error_message": d.error_message,
                 "change_records_count": len(d.change_records) if d.change_records else 0,
-                "retrieval_provider": d.doc_metadata.get("retrieval_provider", "Direct HTTP") if d.doc_metadata else "Direct HTTP",
+                "retrieval_provider": _retrieval_provider_label(d.doc_metadata),
+                "routing_decision": (d.doc_metadata or {}).get("routing_decision"),
+                "resolved_source_url": (d.doc_metadata or {}).get("resolved_source_url"),
+                "provider_warnings": (d.doc_metadata or {}).get("provider_warnings") or [],
             }
             for d in docs
         ]
@@ -816,6 +829,28 @@ def handle_source_pdf_upload(
     }
 
 
+def _record_url_ingestion_failure(
+    session_factory: sessionmaker[Session],
+    url: str,
+    error: Exception,
+) -> None:
+    """Persist a URL ingestion failure so it is visible to operators (never silently dropped)."""
+    try:
+        with session_factory() as session:
+            session.add(IngestionFailure(
+                source_path=url,
+                error_category=type(error).__name__,
+                error_message=str(error),
+                retry_count=0,
+                retry_status="not_retried",
+                operator_status="unresolved",
+                schema_version="1.0",
+            ))
+            session.commit()
+    except SQLAlchemyError:
+        logger.exception("Could not record ingestion failure for %s", url)
+
+
 def handle_source_url_upload(
     url: str,
     session_factory: sessionmaker[Session],
@@ -835,13 +870,17 @@ def handle_source_url_upload(
     6. Zero automated decisions, zero direct LLM clients.
     """
     cfg = config or load_config()
-    service = url_service or URLIngestionService()
+    service = url_service or URLIngestionService(config=cfg)
 
-    # 1. Ingest URL (download PDF or normalize HTML -> PDF in source_dir)
+    # 1. Ingest URL (PDF -> direct download; web page -> Jina Reader)
     try:
         ingestion_res = service.ingest_url(url=url, source_dir=cfg.source_dir)
-    except ContentChallengeError as cce:
-        logger.warning("URL ingestion rejected due to bot challenge: %s", cce)
+    except (URLIngestionError, ValueError) as ie:
+        _record_url_ingestion_failure(session_factory, url, ie)
+        if not isinstance(ie, ContentChallengeError):
+            raise
+        logger.warning("URL ingestion rejected due to bot challenge: %s", ie)
+        cce = ie
         return {
             "success": False,
             "input_type": "URL",
@@ -877,7 +916,7 @@ def handle_source_url_upload(
         "content_sha256": file_hash,
         "extracted_text_size": ingestion_res.extracted_text_size,
         "content_classification": ingestion_res.content_classification,
-        "retrieval_provider": ingestion_res.retrieval_provider,
+        **ingestion_res.provenance_metadata(),
     }
 
     scan_result = m_agent.ingest_known_file(
@@ -1661,7 +1700,7 @@ def render_sources_view(
                                     config=cfg,
                                 )
                                 st.session_state["upload_result_info"] = res
-                            except (InvalidURLError, HTTPFetchError, EmptyContentError, ValueError) as ue:
+                            except (URLIngestionError, ValueError) as ue:
                                 st.error(f"URL Ingestion Error: {ue}")
                             except Exception as e:
                                 logger.exception("Unexpected error in URL ingestion handler: %s", e)
@@ -1799,6 +1838,12 @@ def render_sources_view(
                 st.write(f"**First Seen:** `{str(doc_item['first_seen'])[:19]}`")
                 st.write(f"**Last Retrieved:** `{str(doc_item['last_retrieved'])[:19]}`")
                 st.write(f"**Retrieval Method:** `{doc_item['retrieval_provider']}`")
+                if doc_item.get("routing_decision"):
+                    st.write(f"**Routing Decision:** `{doc_item['routing_decision']}`")
+                if doc_item.get("resolved_source_url"):
+                    st.write(f"**Resolved URL:** `{doc_item['resolved_source_url']}`")
+                for warning in doc_item.get("provider_warnings") or []:
+                    st.warning(f"Retrieval provider warning: {warning}")
             with t2:
                 st.write(f"**Current SHA-256:** `{doc_item['sha256_hash']}`")
                 prev_sha = doc_item.get("previous_sha256_hash")
