@@ -47,6 +47,29 @@ class ExtractionAgent:
         service = GuidanceIndexService(self.session_factory)
         return [service.index_document(doc_id) for doc_id in document_ids]
 
+    def _classify_recommendation(self, session: Session, doc: IngestedDocument, verbatim: str) -> dict:
+        """Department, treatment and change-category classification (taxonomy + statement index)."""
+        from app.models.entities import GuidanceChange, GuidanceStatement
+        from app.services.clinical_statements import similarity
+        from app.services.taxonomy import TaxonomyError, get_taxonomy
+
+        try:
+            taxonomy = get_taxonomy()
+        except TaxonomyError:
+            return {}
+        treatments = taxonomy.find_treatments(verbatim).treatments
+        meta = doc.doc_metadata or {}
+        departments = list(meta.get("departments") or taxonomy.departments_for_treatments(treatments))
+        category = None
+        for change in session.query(GuidanceChange).filter_by(to_document_id=doc.id):
+            stmt = session.get(GuidanceStatement, change.to_statement_id) if change.to_statement_id else None
+            if stmt is not None and similarity(" ".join(stmt.verbatim_text.split()), " ".join(verbatim.split())) >= 0.85:
+                category = change.change_category
+                break
+        if category is None:
+            category = "new_recommendation" if not doc.previous_source_version_id else "revised_recommendation"
+        return {"change_category": category, "departments": sorted(set(departments)), "treatments": treatments}
+
     def process_document(self, document_id: str) -> List[ChangeRecord]:
         """Extract clinical recommendations from an ingested document.
 
@@ -222,6 +245,7 @@ class ExtractionAgent:
                         extraction_prompt_version=self.prompt_version,
                         status=record_status,
                         schema_version="1.0",
+                        **self._classify_recommendation(session, doc, rec.verbatim_text),
                     )
                     session.add(change)
                     session.commit()

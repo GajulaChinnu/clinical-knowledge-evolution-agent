@@ -1,0 +1,33 @@
+# CKEA relevance, evidence-grading and ranking rules (deterministic).
+# These order findings and the governance queue ONLY. They never change an impact tier,
+# never skip a human gate, and never decide anything. Every score stores its rule id + basis.
+version: "1.0"
+
+relevance:
+  REL-01: {score: 5, basis: Directly concerns the treatment in the department being reviewed.}
+  REL-02: {score: 4, basis: Directly concerns the treatment; source belongs to another department.}
+  REL-03: {score: 3, basis: Concerns the treatment class rather than the specific treatment.}
+  REL-04: {score: 2, basis: Conditional statement that does not apply to this patient.}
+  REL-05: {score: 1, basis: No treatment or practice content.}
+
+urgency:
+  URG-01: {score: 5, basis: Contraindication or safety restriction that applies, or newly added contraindication / safety warning.}
+  URG-02: {score: 4, basis: Contraindication or safety warning to confirm, or a withdrawn recommendation.}
+  URG-03: {score: 4, basis: Dose, interval, duration or threshold change.}
+  URG-04: {score: 3, basis: New or revised recommendation, or plan differs from a current recommendation.}
+  URG-05: {score: 2, basis: Current recommendation that matches the plan, or a removed contraindication.}
+  URG-06: {score: 1, basis: Published evidence without a recommendation.}
+
+source_quality:
+  # Base is the watchlist quality tier (1-5). A stated evidence level caps it; it never raises it.
+  evidence_level_cap: {A: 5, B: 4, C: 3, D: 2}
+  default_tier: 2
+
+novelty:
+  multipliers: {new: 1.0, revision_of_known: 0.9, duplicate_of_existing: 0.3}
+  duplicate_similarity: 0.92
+
+priority_weights: {urgency: 0.45, relevance: 0.30, source_quality: 0.25}
+
+filters:
+  FLT-01: {basis: No practice change - the statement does not recommend, restrict, warn about or report evidence on any treatment.}

@@ -299,10 +299,12 @@ def change_category_for(old: Optional[ParsedStatement], new: Optional[ParsedStat
             return "withdrawn"
         if new.statement_type == "contraindication":
             return "contraindication_added"
-        if new.statement_type == "safety_warning" or source_type == "safety_notice":
+        if new.statement_type == "safety_warning" or (source_type == "safety_notice" and new.treatments):
             return "safety_warning"
         if new.statement_type in ("recommendation",):
             return "new_recommendation"
+        if new.statement_type == "evidence" and (new.treatments or new.treatment_classes):
+            return "new_evidence"
         return "no_practice_change"
     if new is None and old is not None:
         if old.statement_type == "contraindication":
