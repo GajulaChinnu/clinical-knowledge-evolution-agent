@@ -852,3 +852,37 @@ def test_protocol_text_resolved_only_from_exact_version_and_section(briefing_env
     assert current["exact_protocol_text"] == "CURRENT v2 TEXT for SEC-3."
     assert current["section_heading"] == "Target"
     assert current["protocol_version"] == "v2.0"
+
+
+def test_ui_renders_real_brief_payload_evidence(briefing_env):
+    """The reviewer-facing view must read the real StructuredBriefPayload keys (previously it showed None)."""
+    from unittest.mock import MagicMock, patch
+    from app.ui.streamlit_app import render_brief_sections
+
+    sf = briefing_env["session_factory"]
+    impact_id = _create_full_pipeline_records(sf)
+    _set_gap_evidence(
+        sf, impact_id,
+        matched_section_id="SEC-3",
+        matched_section_heading="Cardiorenal Therapy",
+        exact_protocol_text="SGLT2 inhibitors are reserved for eGFR ≥ 45 mL/min.",
+        specific_difference="Guideline extends SGLT2 initiation to eGFR ≥ 20.",
+    )
+    payload = briefing_env["agent"].process_impact_record(impact_id).structured_payload
+
+    with patch("app.ui.streamlit_app.st") as mock_st:
+        mock_st.expander.return_value = MagicMock()
+        render_brief_sections(payload)
+        shown = " ".join(
+            str(arg)
+            for method in ("write", "info", "warning", "markdown", "caption")
+            for call in getattr(mock_st, method).call_args_list
+            for arg in call.args
+        )
+
+    assert "Initiate SGLT2 inhibitor therapy for adults with T2D and established CKD." in shown
+    assert "SGLT2 inhibitors are reserved for eGFR ≥ 45 mL/min." in shown
+    assert "Guideline extends SGLT2 initiation to eGFR ≥ 20." in shown
+    assert "PROT-DM-001" in shown
+    assert "In adults with type 2 diabetes and established CKD" in shown
+    assert "**Verbatim Recommendation:** None" not in shown

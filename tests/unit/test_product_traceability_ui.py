@@ -366,7 +366,7 @@ class TestDataRetrievalAndProvenance:
             rendered_file_path="data/briefs/BRF-PROV-001.md",
             rendered_file_hash="abcdef",
             structured_payload={
-                "comparison": {
+                "specific_difference": {
                     "specific_difference": "Lower eGFR threshold for SGLT2i initiation from 30 down to 20 ml/min."
                 }
             },

@@ -322,7 +322,7 @@ def get_changes_with_gaps(
             if gap and gap.impact_record and gap.impact_record.change_brief:
                 brief_payload = gap.impact_record.change_brief.structured_payload or {}
 
-            spec_diff = brief_payload.get("comparison", {}).get("specific_difference")
+            spec_diff = (gap.specific_difference if gap else None) or (brief_payload.get("specific_difference") or {}).get("specific_difference")
             if not spec_diff:
                 if gap and gap.is_match and gap.difference_type:
                     diff_readable = gap.difference_type.replace("_", " ")
@@ -445,7 +445,7 @@ def get_brief_summaries(session_factory: Union[sessionmaker[Session], Session]) 
             if gap and gap.candidate_protocol_section_ids and len(gap.candidate_protocol_section_ids) > 0:
                 sec_id = gap.candidate_protocol_section_ids[0].split("__")[-1]
 
-            diff_summary = payload.get("comparison", {}).get("specific_difference")
+            diff_summary = (gap.specific_difference if gap else None) or (payload.get("specific_difference") or {}).get("specific_difference")
             if not diff_summary and gap:
                 diff_summary = f"Difference category: {gap.difference_type or 'unspecified'}"
 
@@ -1862,6 +1862,71 @@ def render_impact_view(session_factory: sessionmaker[Session]) -> None:
                 st.write(f"**Scoring YAML Version:** `{imp['scoring_yaml_version']}`")
 
 
+def render_brief_sections(payload: Dict[str, Any]) -> None:
+    """Render the seven required Change Brief sections from the StructuredBriefPayload schema."""
+    what = payload.get("what_changed") or {}
+    current = payload.get("current_protocol") or {}
+    diff = payload.get("specific_difference") or {}
+    impact = payload.get("impact_assessment") or {}
+    workflows = payload.get("affected_workflows") or {}
+    excerpt = payload.get("source_excerpt") or {}
+
+    with st.expander("1. What Changed (external source)", expanded=True):
+        st.write(f"**Verbatim Recommendation:** {what.get('recommendation_text')}")
+        st.write(f"**Source:** `{what.get('source_identifier')}` · page {what.get('page')} · {what.get('section')}")
+        st.write(f"**Target Population:** {what.get('target_population')}")
+        st.write(f"**Intervention:** {what.get('intervention')}")
+        st.write(f"**Evidence Grade:** {what.get('evidence_grade') or 'Not stated in source'}")
+        st.write(f"**Extraction Confidence:** {what.get('extraction_confidence')}")
+
+    with st.expander("2. Current Institutional Protocol", expanded=True):
+        if current.get("is_match"):
+            st.write(
+                f"**Protocol:** `{current.get('protocol_id')}` version `{current.get('protocol_version')}` · "
+                f"section `{current.get('section_id')}` — {current.get('section_heading')}"
+            )
+            st.info(current.get("exact_protocol_text") or "Protocol text not available.")
+        else:
+            st.warning(current.get("no_match_statement") or "No matching protocol section.")
+
+    with st.expander("3. Specific Difference", expanded=True):
+        st.write(f"**Difference Type:** `{diff.get('difference_type')}` · **Result:** `{diff.get('comparison_result')}`")
+        st.write(f"**Comparison Confidence:** {diff.get('comparison_confidence')}")
+        st.write(diff.get("specific_difference"))
+
+    with st.expander("4. Impact Assessment", expanded=False):
+        if impact.get("is_complete"):
+            st.write(
+                f"**Tier:** `{impact.get('tier')}` · **Score:** `{impact.get('total_score')}/15` · "
+                f"**SLA:** {impact.get('sla_hours')}h (deadline `{impact.get('sla_deadline')}`) · "
+                f"**Route:** {impact.get('routing_target')}"
+            )
+            st.write(f"- Clinical urgency {impact.get('clinical_urgency')}/5 — {impact.get('urgency_basis')}")
+            st.write(f"- Evidence strength {impact.get('evidence_strength')}/5 — {impact.get('evidence_basis')}")
+            st.write(f"- Pathway breadth {impact.get('pathway_breadth')}/5 — {impact.get('breadth_basis')}")
+            st.caption(f"Rules {impact.get('rule_ids')} · scoring version {impact.get('scoring_yaml_version')}")
+        else:
+            st.warning(f"Impact incomplete — no tier or SLA assigned. {impact.get('incomplete_reason') or ''}")
+
+    with st.expander("5. Affected Workflows", expanded=False):
+        if workflows.get("is_available"):
+            st.write(", ".join(workflows.get("affected_workflows") or []) or "None listed.")
+            if workflows.get("workflow_summary"):
+                st.write(workflows["workflow_summary"])
+        else:
+            st.warning(workflows.get("unavailability_reason") or "Workflow information unavailable.")
+
+    with st.expander("6. Proposed Review Actions", expanded=False):
+        for item in payload.get("proposed_actions") or []:
+            st.markdown(f"{item.get('step')}. **{item.get('action')}** — {item.get('description')}")
+
+    with st.expander("7. Source Excerpt", expanded=False):
+        st.info(
+            f"**{excerpt.get('source_identifier')}** · page {excerpt.get('page')} · {excerpt.get('section')}\n\n"
+            f"> {excerpt.get('source_excerpt')}"
+        )
+
+
 def render_briefs_view(session_factory: sessionmaker[Session]) -> None:
     """Render 7-Section Change Briefs formatted as Executive Review Documents."""
     render_page_header(
@@ -1933,43 +1998,7 @@ def render_briefs_view(session_factory: sessionmaker[Session]) -> None:
     tab1, tab2, tab3 = st.tabs(["📑 Seven Required Sections", "🌐 Rendered HTML", "📄 Raw Markdown / JSON"])
 
     with tab1:
-        with st.expander("1. What Changed", expanded=True):
-            rec = payload.get("recommendation", {})
-            st.write(f"**Verbatim Recommendation:** {rec.get('verbatim_text')}")
-            st.write(f"**Target Population:** {rec.get('target_population')}")
-            st.write(f"**Intervention:** {rec.get('intervention')}")
-            st.write(f"**Evidence Grade:** {rec.get('evidence_grade')}")
-
-        with st.expander("2. Current Protocol", expanded=True):
-            prot = payload.get("protocol", {})
-            st.write(f"**Protocol ID:** `{prot.get('protocol_id')}` (v{prot.get('protocol_version')})")
-            st.write(f"**Section Heading:** {prot.get('section_heading')}")
-            st.write(f"**Current Text:** {prot.get('section_text')}")
-
-        with st.expander("3. Specific Difference", expanded=True):
-            diff = payload.get("comparison", {})
-            st.write(f"**Difference Category:** `{diff.get('difference_type')}`")
-            st.write(f"**Clinical Difference:** {diff.get('specific_difference')}")
-
-        with st.expander("4. Impact Assessment", expanded=False):
-            imp = payload.get("impact", {})
-            st.write(f"**Routing Tier:** `{imp.get('tier')}` | **Total Score:** `{imp.get('total_score')}`")
-            st.write(f"**SLA Deadline:** `{imp.get('sla_deadline')}`")
-            st.write(f"**Urgency Basis:** {imp.get('urgency_basis')}")
-
-        with st.expander("5. Affected Workflows", expanded=False):
-            wf = payload.get("workflow", {})
-            st.write(f"**Impacted Care Pathways:** {', '.join(wf.get('affected_departments', [])) or 'General Medical'}")
-            st.write(f"**EHR Changes Required:** {wf.get('workflow_description')}")
-
-        with st.expander("6. Proposed Review Actions", expanded=False):
-            actions = payload.get("proposed_actions", [])
-            for a in actions:
-                st.markdown(f"- **{a.get('action_type', 'Action')}:** {a.get('description')}")
-
-        with st.expander("7. Source Excerpt", expanded=False):
-            src = payload.get("source_excerpt", {})
-            st.info(f"**Exact Source Excerpt (Page {src.get('page')}, Section {src.get('section')}):**\n> {src.get('excerpt')}")
+        render_brief_sections(payload)
 
     with tab2:
         if full_brief.get("html_content"):
@@ -2079,10 +2108,11 @@ def render_governance_view(session_factory: sessionmaker[Session], governance_ag
         full_brief = get_brief_full_payload(session_factory, selected_brief_id)
         if full_brief and "structured_payload" in full_brief:
             payload = full_brief["structured_payload"]
-            with st.expander("🔍 Deep Dive: Source Excerpt", expanded=False):
-                st.write(payload.get("source_excerpt", {}).get("excerpt"))
-            with st.expander("🏥 Deep Dive: Full Protocol Text", expanded=False):
-                st.write(payload.get("protocol", {}).get("section_text"))
+            with st.expander("Source Excerpt", expanded=False):
+                st.write((payload.get("source_excerpt") or {}).get("source_excerpt") or "Not available.")
+            with st.expander("Current Protocol Text", expanded=False):
+                current = payload.get("current_protocol") or {}
+                st.write(current.get("exact_protocol_text") or current.get("no_match_statement") or "Not available.")
 
     with col_panel:
         st.markdown("### ✍️ Formal Review Panel")
