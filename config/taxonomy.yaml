@@ -1,0 +1,121 @@
+# CKEA clinical taxonomy (SYNTHETIC demonstration vocabulary).
+# Controlled lists for departments, pathways, treatment classes and treatments.
+# Every department/treatment value stored by CKEA must come from this file.
+version: "1.0"
+
+departments:
+  - id: endocrinology
+    name: Endocrinology
+    synonyms: [endocrine, diabetes, diabetology]
+    pathways:
+      - id: t2d-glycaemic
+        name: Type 2 diabetes glycaemic management
+      - id: diabetic-kidney
+        name: Diabetic kidney disease
+  - id: cardiology
+    name: Cardiology
+    synonyms: [cardiac, heart]
+    pathways:
+      - id: af-stroke-prevention
+        name: Atrial fibrillation stroke prevention
+      - id: secondary-prevention
+        name: Cardiovascular secondary prevention
+  - id: nephrology
+    name: Nephrology
+    synonyms: [renal, kidney]
+    pathways:
+      - id: ckd-albuminuria
+        name: Chronic kidney disease with albuminuria
+      - id: ckd-metabolic
+        name: CKD metabolic complications
+  - id: infectious-diseases
+    name: Infectious Diseases
+    synonyms: [infectious disease, infection, microbiology, id]
+    pathways:
+      - id: cap
+        name: Community-acquired pneumonia
+      - id: antimicrobial-stewardship
+        name: Antimicrobial stewardship
+  - id: emergency-medicine
+    name: Emergency Medicine
+    synonyms: [emergency, a&e, ed, emergency department]
+    pathways:
+      - id: anaphylaxis
+        name: Anaphylaxis management
+      - id: resuscitation
+        name: Resuscitation
+
+treatment_classes:
+  - id: biguanide
+    name: Biguanide
+    synonyms: [biguanides]
+  - id: sulfonylurea
+    name: Sulfonylurea
+    synonyms: [sulfonylureas, sulphonylurea, sulphonylureas]
+  - id: sglt2-inhibitor
+    name: SGLT2 inhibitor
+    synonyms: [sglt2 inhibitors, sglt-2 inhibitor, sglt-2 inhibitors]
+  - id: doac
+    name: Direct oral anticoagulant
+    synonyms: [doac, doacs, direct oral anticoagulants, anticoagulant, anticoagulants, anticoagulation]
+  - id: antiplatelet
+    name: Antiplatelet
+    synonyms: [antiplatelets, antiplatelet therapy]
+  - id: ace-inhibitor
+    name: ACE inhibitor
+    synonyms: [ace inhibitors, angiotensin-converting enzyme inhibitor]
+  - id: arb
+    name: Angiotensin receptor blocker
+    synonyms: [angiotensin receptor blockers, arbs]
+  - id: alkali
+    name: Alkali therapy
+    synonyms: []
+  - id: penicillin
+    name: Penicillin
+    synonyms: [penicillins]
+  - id: macrolide
+    name: Macrolide
+    synonyms: [macrolides]
+  - id: tetracycline
+    name: Tetracycline
+    synonyms: [tetracyclines]
+  - id: fluoroquinolone
+    name: Fluoroquinolone
+    synonyms: [fluoroquinolones, quinolone, quinolones]
+  - id: statin
+    name: Statin
+    synonyms: [statins]
+  - id: sympathomimetic
+    name: Sympathomimetic
+    synonyms: []
+  - id: antihistamine
+    name: Antihistamine
+    synonyms: [antihistamines]
+
+treatments:
+  - {id: metformin, name: Metformin, class: biguanide, synonyms: [glucophage], departments: [endocrinology, nephrology]}
+  - {id: gliclazide, name: Gliclazide, class: sulfonylurea, synonyms: [diamicron], departments: [endocrinology]}
+  - {id: empagliflozin, name: Empagliflozin, class: sglt2-inhibitor, synonyms: [jardiance], departments: [endocrinology, cardiology, nephrology]}
+  - {id: apixaban, name: Apixaban, class: doac, synonyms: [eliquis], departments: [cardiology]}
+  - {id: dabigatran, name: Dabigatran, class: doac, synonyms: [pradaxa], departments: [cardiology, nephrology]}
+  - {id: aspirin, name: Aspirin, class: antiplatelet, synonyms: [acetylsalicylic acid], departments: [cardiology]}
+  - {id: ramipril, name: Ramipril, class: ace-inhibitor, synonyms: [tritace], departments: [nephrology, cardiology]}
+  - {id: losartan, name: Losartan, class: arb, synonyms: [cozaar], departments: [nephrology, cardiology]}
+  - {id: sodium-bicarbonate, name: Sodium bicarbonate, class: alkali, synonyms: [bicarbonate supplementation], departments: [nephrology]}
+  - {id: amoxicillin, name: Amoxicillin, class: penicillin, synonyms: [amoxycillin, amoxil], departments: [infectious-diseases]}
+  - {id: clarithromycin, name: Clarithromycin, class: macrolide, synonyms: [klaricid], departments: [infectious-diseases]}
+  - {id: doxycycline, name: Doxycycline, class: tetracycline, synonyms: [vibramycin], departments: [infectious-diseases]}
+  - {id: levofloxacin, name: Levofloxacin, class: fluoroquinolone, synonyms: [levaquin, tavanic], departments: [infectious-diseases]}
+  - {id: ciprofloxacin, name: Ciprofloxacin, class: fluoroquinolone, synonyms: [cipro], departments: [infectious-diseases]}
+  - {id: simvastatin, name: Simvastatin, class: statin, synonyms: [zocor], departments: [cardiology]}
+  - {id: adrenaline, name: Adrenaline, class: sympathomimetic, synonyms: [epinephrine, epipen], departments: [emergency-medicine]}
+  - {id: chlorphenamine, name: Chlorphenamine, class: antihistamine, synonyms: [chlorpheniramine, piriton], departments: [emergency-medicine]}
+
+# Departments for protocol files that pre-date protocol metadata (files stay immutable).
+legacy_protocol_metadata:
+  PROT-DM-001:
+    department: endocrinology
+    pathways: [t2d-glycaemic]
+    treatments: [metformin]
+    owner: Endocrinology Clinical Lead
+    effective_date: "2025-03-01"

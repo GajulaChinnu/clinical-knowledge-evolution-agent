@@ -1,0 +1,34 @@
+{
+  "protocol_id": "PROT-NEPH-001",
+  "protocol_version": "v1.0",
+  "title": "SYNTHETIC Chronic Kidney Disease Protocol",
+  "department": "nephrology",
+  "pathways": [
+    "ckd-albuminuria",
+    "ckd-metabolic"
+  ],
+  "treatments": [
+    "ramipril",
+    "sodium-bicarbonate"
+  ],
+  "owner": "Nephrology Clinical Lead",
+  "effective_date": "2025-01-15",
+  "synthetic_notice": "SYNTHETIC protocol for CKEA demonstration only. Not real guidance.",
+  "sections": [
+    {
+      "section_id": "SEC-1",
+      "section_heading": "Albuminuria",
+      "section_text": "Start ramipril 2.5 mg once daily in adults with chronic kidney disease and an albumin-to-creatinine ratio of 30 mg/mmol or above."
+    },
+    {
+      "section_id": "SEC-2",
+      "section_heading": "Monitoring",
+      "section_text": "Check serum potassium within 2 weeks of starting ramipril."
+    },
+    {
+      "section_id": "SEC-3",
+      "section_heading": "Metabolic Acidosis",
+      "section_text": "Offer sodium bicarbonate 500 mg three times daily when serum bicarbonate is below 20 mmol/L."
+    }
+  ]
+}

@@ -37,6 +37,13 @@ class ProtocolDocument(BaseModel):
     protocol_version: str = Field(..., min_length=1)
     title: Optional[str] = Field(default=None)
     sections: List[ProtocolSection] = Field(default_factory=list)
+    # Clinical ownership metadata (taxonomy ids). Optional for legacy protocol files, whose
+    # metadata comes from config/taxonomy.yaml (legacy_protocol_metadata) instead.
+    department: Optional[str] = Field(default=None)
+    pathways: List[str] = Field(default_factory=list)
+    treatments: List[str] = Field(default_factory=list)
+    owner: Optional[str] = Field(default=None)
+    effective_date: Optional[str] = Field(default=None)
 
     @field_validator("protocol_id", "protocol_version")
     @classmethod

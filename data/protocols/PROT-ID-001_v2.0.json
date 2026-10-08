@@ -1,0 +1,34 @@
+{
+  "protocol_id": "PROT-ID-001",
+  "protocol_version": "v2.0",
+  "title": "SYNTHETIC Community-Acquired Pneumonia Protocol",
+  "department": "infectious-diseases",
+  "pathways": [
+    "cap",
+    "antimicrobial-stewardship"
+  ],
+  "treatments": [
+    "amoxicillin",
+    "clarithromycin"
+  ],
+  "owner": "Antimicrobial Stewardship Lead",
+  "effective_date": "2026-02-01",
+  "synthetic_notice": "SYNTHETIC protocol for CKEA demonstration only. Not real guidance.",
+  "sections": [
+    {
+      "section_id": "SEC-1",
+      "section_heading": "Low-Severity Pneumonia",
+      "section_text": "Give amoxicillin 500 mg three times daily for 5 days to adults with low-severity community-acquired pneumonia."
+    },
+    {
+      "section_id": "SEC-2",
+      "section_heading": "Penicillin Allergy",
+      "section_text": "Give clarithromycin 500 mg twice daily for 5 days if the patient has a penicillin allergy."
+    },
+    {
+      "section_id": "SEC-3",
+      "section_heading": "Interactions",
+      "section_text": "Avoid clarithromycin in patients taking simvastatin because of the risk of myopathy."
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+# CKEA watchlist: the defined set of sources the Monitoring Agent checks.
+# The entry id is the stable source identity. All corpus sources are SYNTHETIC.
+#
+# location:
+#   corpus:<path>   a directory under data/corpus/ holding versioned files v<version>.md
+#   https://...     a web page or PDF (retrieved through the existing URL ingestion path)
+#
+# quality_tier (1-5): 5 national guideline body / medicines regulator, 4 randomised trial,
+# 3 regional bulletin, 2 observational study, 1 case series / opinion.
+version: "1.0"
+
+sources:
+  - id: endo-t2d-guideline
+    title: SYNTHETIC Type 2 Diabetes Pharmacotherapy Guideline
+    location: corpus:endocrinology/t2d-guideline
+    source_type: guideline
+    publisher: Synthetic National Diabetes Society
+    quality_tier: 5
+    quality_basis: National guideline body; systematic-review based recommendations.
+    departments: [endocrinology]
+    treatments: [metformin, gliclazide, empagliflozin]
+    check_interval_hours: 24
+
+  - id: cardio-af-guideline
+    title: SYNTHETIC Atrial Fibrillation Anticoagulation Guideline
+    location: corpus:cardiology/af-anticoagulation-guideline
+    source_type: guideline
+    publisher: Synthetic Cardiology Council
+    quality_tier: 5
+    quality_basis: National guideline body; systematic-review based recommendations.
+    departments: [cardiology]
+    treatments: [apixaban, aspirin]
+    check_interval_hours: 24
+
+  - id: neph-ckd-guideline
+    title: SYNTHETIC Chronic Kidney Disease Management Guideline
+    location: corpus:nephrology/ckd-guideline
+    source_type: guideline
+    publisher: Synthetic Renal Association
+    quality_tier: 5
+    quality_basis: National guideline body; systematic-review based recommendations.
+    departments: [nephrology]
+    treatments: [ramipril, losartan, sodium-bicarbonate]
+    check_interval_hours: 24
+
+  - id: id-cap-guideline
+    title: SYNTHETIC Community-Acquired Pneumonia Antibiotic Guideline
+    location: corpus:infectious-diseases/cap-guideline
+    source_type: guideline
+    publisher: Synthetic Infection Society
+    quality_tier: 5
+    quality_basis: National guideline body; systematic-review based recommendations.
+    departments: [infectious-diseases]
+    treatments: [amoxicillin, clarithromycin, doxycycline, simvastatin]
+    check_interval_hours: 24
+
+  - id: em-anaphylaxis-guideline
+    title: SYNTHETIC Anaphylaxis Emergency Treatment Guideline
+    location: corpus:emergency-medicine/anaphylaxis-guideline
+    source_type: guideline
+    publisher: Synthetic Resuscitation Council
+    quality_tier: 5
+    quality_basis: National resuscitation guideline body.
+    departments: [emergency-medicine]
+    treatments: [adrenaline, chlorphenamine]
+    check_interval_hours: 24
+
+  - id: sn-fluoroquinolone
+    title: "SYNTHETIC Safety Notice: Fluoroquinolones in Community-Acquired Pneumonia"
+    location: corpus:safety-notices/fluoroquinolone-notice
+    source_type: safety_notice
+    publisher: Synthetic Medicines Safety Agency
+    quality_tier: 5
+    quality_basis: Medicines regulator safety communication.
+    departments: [infectious-diseases]
+    treatments: [levofloxacin, ciprofloxacin]
+    check_interval_hours: 6
+
+  - id: sn-dabigatran-renal
+    title: "SYNTHETIC Safety Notice: Dabigatran and Severe Renal Impairment"
+    location: corpus:safety-notices/dabigatran-renal-notice
+    source_type: safety_notice
+    publisher: Synthetic Medicines Safety Agency
+    quality_tier: 5
+    quality_basis: Medicines regulator safety communication.
+    departments: [cardiology, nephrology]
+    treatments: [dabigatran]
+    check_interval_hours: 6
+
+  - id: pub-apixaban-rct
+    title: "SYNTHETIC Trial Summary: Apixaban versus Aspirin in Atrial Fibrillation"
+    location: corpus:publications/apixaban-rct-summary
+    source_type: publication
+    publisher: Synthetic Journal of Cardiology
+    quality_tier: 4
+    quality_basis: Randomised controlled trial summary.
+    departments: [cardiology]
+    treatments: [apixaban, aspirin]
+    check_interval_hours: 168
+
+  - id: pub-metformin-case-series
+    title: "SYNTHETIC Case Series: High-Dose Metformin Tolerability"
+    location: corpus:publications/metformin-case-series
+    source_type: publication
+    publisher: Synthetic Regional Endocrine Bulletin
+    quality_tier: 1
+    quality_basis: Uncontrolled single-clinic case series.
+    departments: [endocrinology]
+    treatments: [metformin]
+    check_interval_hours: 168
+
+  - id: pub-ckd-editorial
+    title: "SYNTHETIC Editorial: Raising Awareness of Kidney Disease"
+    location: corpus:publications/ckd-awareness-editorial
+    source_type: publication
+    publisher: Synthetic Kidney Health Review
+    quality_tier: 1
+    quality_basis: Editorial opinion without new evidence.
+    departments: [nephrology]
+    treatments: []
+    check_interval_hours: 168
+
+  - id: bulletin-antimicrobial
+    title: SYNTHETIC Regional Antimicrobial Prescribing Bulletin
+    location: corpus:bulletins/regional-antimicrobial-bulletin
+    source_type: publication
+    publisher: Synthetic Regional Antimicrobial Network
+    quality_tier: 3
+    quality_basis: Regional prescribing bulletin restating national guidance.
+    departments: [infectious-diseases]
+    treatments: [amoxicillin]
+    check_interval_hours: 168

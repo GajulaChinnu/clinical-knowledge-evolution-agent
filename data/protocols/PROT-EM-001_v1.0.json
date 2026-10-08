@@ -1,0 +1,33 @@
+{
+  "protocol_id": "PROT-EM-001",
+  "protocol_version": "v1.0",
+  "title": "SYNTHETIC Emergency Department Anaphylaxis Protocol",
+  "department": "emergency-medicine",
+  "pathways": [
+    "anaphylaxis"
+  ],
+  "treatments": [
+    "adrenaline",
+    "chlorphenamine"
+  ],
+  "owner": "Emergency Medicine Clinical Lead",
+  "effective_date": "2024-10-01",
+  "synthetic_notice": "SYNTHETIC protocol for CKEA demonstration only. Not real guidance.",
+  "sections": [
+    {
+      "section_id": "SEC-1",
+      "section_heading": "Adrenaline",
+      "section_text": "Give intramuscular adrenaline 0.5 mg into the anterolateral thigh to adults with anaphylaxis."
+    },
+    {
+      "section_id": "SEC-2",
+      "section_heading": "Repeat Dosing",
+      "section_text": "Repeat intramuscular adrenaline after 10 minutes if there is no improvement."
+    },
+    {
+      "section_id": "SEC-3",
+      "section_heading": "Adjunct Therapy",
+      "section_text": "Give chlorphenamine 10 mg intravenously as first-line treatment for anaphylaxis."
+    }
+  ]
+}

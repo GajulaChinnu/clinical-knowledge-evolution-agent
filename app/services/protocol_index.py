@@ -125,6 +125,11 @@ def _parse_json_protocol(content: str, filename: str) -> ProtocolDocument:
         protocol_version=str(protocol_version).strip(),
         title=str(title).strip() if title else None,
         sections=sections,
+        department=data.get("department"),
+        pathways=list(data.get("pathways") or []),
+        treatments=list(data.get("treatments") or []),
+        owner=data.get("owner"),
+        effective_date=str(data["effective_date"]) if data.get("effective_date") else None,
     )
 
 
@@ -229,6 +234,18 @@ def _parse_markdown_protocol(content: str, filename: str) -> ProtocolDocument:
     )
 
 
+def _with_taxonomy_metadata(protocol_doc: ProtocolDocument) -> ProtocolDocument:
+    """Attach department metadata (file or taxonomy legacy entry) used for Chroma filtering."""
+    from app.services.protocol_repository import resolve_protocol_metadata
+    from app.services.taxonomy import TaxonomyError, get_taxonomy
+
+    try:
+        return resolve_protocol_metadata(protocol_doc, get_taxonomy())
+    except TaxonomyError as e:
+        logger.warning("Protocol %s metadata not resolved: %s", protocol_doc.protocol_id, e)
+        return protocol_doc
+
+
 class ProtocolIndexService:
     """Manages local embedded ChromaDB persistence, indexing, and semantic retrieval for protocol sections."""
 
@@ -297,6 +314,7 @@ class ProtocolIndexService:
 
         ids = [s.document_id for s in new_sections]
         documents = [s.section_text for s in new_sections]
+        department = protocol_doc.department or ""
         metadatas: List[Dict[str, Any]] = [
             {
                 "protocol_id": s.protocol_id,
@@ -304,6 +322,9 @@ class ProtocolIndexService:
                 "section_id": s.section_id,
                 "section_heading": s.section_heading,
                 "section_text": s.section_text,
+                # Chroma metadata values must be scalars: lists are stored comma-joined.
+                "department": department,
+                "treatments": ",".join(protocol_doc.treatments),
             }
             for s in new_sections
         ]
@@ -353,6 +374,7 @@ class ProtocolIndexService:
         for file_path in files:
             try:
                 protocol_doc = parse_protocol_file(file_path)
+                protocol_doc = _with_taxonomy_metadata(protocol_doc)
                 total_sections = len(protocol_doc.sections)
                 indexed_count = self.index_protocol(protocol_doc)
                 skipped_count = total_sections - indexed_count

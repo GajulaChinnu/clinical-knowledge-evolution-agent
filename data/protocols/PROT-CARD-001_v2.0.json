@@ -1,0 +1,38 @@
+{
+  "protocol_id": "PROT-CARD-001",
+  "protocol_version": "v2.0",
+  "title": "SYNTHETIC Atrial Fibrillation Anticoagulation Protocol",
+  "department": "cardiology",
+  "pathways": [
+    "af-stroke-prevention"
+  ],
+  "treatments": [
+    "apixaban",
+    "aspirin"
+  ],
+  "owner": "Cardiology Clinical Lead",
+  "effective_date": "2026-03-01",
+  "synthetic_notice": "SYNTHETIC protocol for CKEA demonstration only. Not real guidance.",
+  "sections": [
+    {
+      "section_id": "SEC-1",
+      "section_heading": "Stroke Prevention",
+      "section_text": "Offer apixaban 5 mg twice daily to adults with non-valvular atrial fibrillation and a CHA2DS2-VASc score of 1 or more."
+    },
+    {
+      "section_id": "SEC-2",
+      "section_heading": "Dose Reduction",
+      "section_text": "Reduce apixaban to 2.5 mg twice daily if the patient meets at least two of: age 80 years or older, weight 60 kg or less, serum creatinine 133 micromol/L or above."
+    },
+    {
+      "section_id": "SEC-3",
+      "section_heading": "Contraindications",
+      "section_text": "Apixaban is contraindicated in patients with a mechanical heart valve."
+    },
+    {
+      "section_id": "SEC-4",
+      "section_heading": "Antiplatelet Therapy",
+      "section_text": "Aspirin is not used for stroke prevention in atrial fibrillation."
+    }
+  ]
+}
