@@ -73,6 +73,16 @@ def test_database_migration_existing_db():
         assert row.change_status == 'first_seen' # DEFAULT value
 
 
+def _head_revision():
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from app.models.database import MIGRATIONS_DIR
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
+    return ScriptDirectory.from_config(cfg).get_current_head()
+
+
 def _revision(engine):
     from alembic.runtime.migration import MigrationContext
 
@@ -94,9 +104,9 @@ def test_legacy_database_is_tracked_by_alembic_and_gets_gap_evidence_columns():
 
     cols = {c["name"] for c in inspect(engine).get_columns("gap_records")}
     assert {"exact_protocol_text", "matched_section_id", "review_reason"} <= cols
-    assert _revision(engine) == "0003_gap_evidence"
+    assert _revision(engine) == _head_revision()
     apply_migrations(engine)  # idempotent
-    assert _revision(engine) == "0003_gap_evidence"
+    assert _revision(engine) == _head_revision()
 
 
 def test_init_db_on_new_database_is_stamped_at_head(tmp_path):
@@ -104,5 +114,5 @@ def test_init_db_on_new_database_is_stamped_at_head(tmp_path):
 
     engine = get_engine(db_url=f"sqlite:///{tmp_path / 'fresh.db'}")
     init_db(engine=engine)
-    assert _revision(engine) == "0003_gap_evidence"
+    assert _revision(engine) == _head_revision()
     engine.dispose()

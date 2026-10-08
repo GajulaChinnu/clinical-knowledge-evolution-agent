@@ -24,6 +24,7 @@ class Pathway:
     id: str
     name: str
     department: str
+    treatments: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,6 +138,17 @@ class Taxonomy:
         wanted = set(dept_ids)
         return sorted(p.id for p in self.pathways.values() if p.department in wanted)
 
+    def pathways_for(self, treatments: Iterable[str], dept_ids: Iterable[str] = ()) -> List[str]:
+        """Pathways that use any of the treatments, optionally limited to departments."""
+        wanted_t, wanted_d = set(treatments), set(dept_ids)
+        return sorted(
+            p.id for p in self.pathways.values()
+            if wanted_t & set(p.treatments) and (not wanted_d or p.department in wanted_d)
+        )
+
+    def departments_for_treatments(self, treatments: Iterable[str]) -> List[str]:
+        return sorted({d for t in treatments if t in self.treatments for d in self.treatments[t].departments})
+
     # ---- treatments ----------------------------------------------------------------
     def validate_treatments(self, values: Iterable[str]) -> List[str]:
         unknown = [v for v in values if v not in self.treatments]
@@ -204,7 +216,8 @@ def load_taxonomy(path: Union[str, Path] = DEFAULT_TAXONOMY_PATH) -> Taxonomy:
             if pid in seen_pathways:
                 raise TaxonomyError(f"Duplicate pathway id '{pid}'")
             seen_pathways.add(pid)
-            pathways.append(Pathway(pid, _require(p, "name", f"pathway {pid}"), dept_id))
+            pathways.append(Pathway(pid, _require(p, "name", f"pathway {pid}"), dept_id,
+                                    tuple(p.get("treatments") or ())))
         departments.append(Department(dept_id, _require(d, "name", f"department {dept_id}"),
                                       tuple(d.get("synonyms") or ()), tuple(pathways)))
     if not departments:
@@ -234,6 +247,12 @@ def load_taxonomy(path: Union[str, Path] = DEFAULT_TAXONOMY_PATH) -> Taxonomy:
                                     tuple(t.get("synonyms") or ()), depts))
     if len({t.id for t in treatments}) != len(treatments):
         raise TaxonomyError("Duplicate treatment ids in taxonomy.")
+    treatment_ids = {t.id for t in treatments}
+    for d in departments:
+        for p in d.pathways:
+            unknown = [t for t in p.treatments if t not in treatment_ids]
+            if unknown:
+                raise TaxonomyError(f"Pathway '{p.id}' references unknown treatment(s) {unknown}")
 
     legacy: Dict[str, ProtocolMetadata] = {}
     for protocol_id, meta in (data.get("legacy_protocol_metadata") or {}).items():

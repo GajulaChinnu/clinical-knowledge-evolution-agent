@@ -355,3 +355,82 @@ class Notification(Base):
     created_at: datetime = Column(UTCDateTime(), nullable=False, default=_utc_now)
     delivery_status: str = Column(String(32), nullable=False, default="pending")
     schema_version: str = Column(String(16), nullable=False, default="1.0")
+
+
+class GuidanceStatement(Base):
+    """A verbatim, sentence-level statement from one version of a monitored source.
+
+    Built deterministically on ingestion (no LLM). Statements are the grounding unit for
+    clinician queries: every citation CKEA shows is one of these rows, located by character
+    offsets in the stored source artifact. Rows are immutable.
+    """
+
+    __tablename__ = "guidance_statements"
+
+    id: str = Column(String(36), primary_key=True, default=_gen_uuid)
+    ingested_document_id: str = Column(String(36), ForeignKey("ingested_documents.id"), nullable=False, index=True)
+    source_identity: str = Column(String(255), nullable=False, index=True)
+    watchlist_id: Optional[str] = Column(String(128), nullable=True, index=True)
+    source_type: Optional[str] = Column(String(32), nullable=True)
+    publisher_version: Optional[str] = Column(String(32), nullable=True)
+    published_date: Optional[str] = Column(String(32), nullable=True)
+    section_heading: Optional[str] = Column(String(512), nullable=True)
+    char_start: Optional[int] = Column(Integer, nullable=True)
+    char_end: Optional[int] = Column(Integer, nullable=True)
+    sequence: int = Column(Integer, nullable=False, default=0)
+    verbatim_text: str = Column(Text, nullable=False)
+    statement_type: str = Column(String(32), nullable=False)
+    treatments: Optional[Any] = Column(JSON, nullable=True)
+    treatment_classes: Optional[Any] = Column(JSON, nullable=True)
+    departments: Optional[Any] = Column(JSON, nullable=True)
+    pathways: Optional[Any] = Column(JSON, nullable=True)
+    parsed: Optional[Any] = Column(JSON, nullable=True)
+    evidence_level: Optional[str] = Column(String(8), nullable=True)
+    created_at: datetime = Column(UTCDateTime(), nullable=False, default=_utc_now)
+    schema_version: str = Column(String(16), nullable=False, default="1.0")
+
+
+class GuidanceChange(Base):
+    """A detected change between consecutive versions of a source (or a new source's content).
+
+    Source evolution only (external v(n-1) -> v(n)); institutional protocol comparison is a
+    separate step. Filtered changes are kept with a reason and can be restored by a reviewer.
+    """
+
+    __tablename__ = "guidance_changes"
+
+    id: str = Column(String(36), primary_key=True, default=_gen_uuid)
+    source_identity: str = Column(String(255), nullable=False, index=True)
+    watchlist_id: Optional[str] = Column(String(128), nullable=True, index=True)
+    source_type: Optional[str] = Column(String(32), nullable=True)
+    from_document_id: Optional[str] = Column(String(36), ForeignKey("ingested_documents.id"), nullable=True)
+    to_document_id: str = Column(String(36), ForeignKey("ingested_documents.id"), nullable=False, index=True)
+    from_statement_id: Optional[str] = Column(String(36), ForeignKey("guidance_statements.id"), nullable=True)
+    to_statement_id: Optional[str] = Column(String(36), ForeignKey("guidance_statements.id"), nullable=True)
+    change_category: str = Column(String(48), nullable=False)
+    attribute_changes: Optional[Any] = Column(JSON, nullable=True)
+    treatments: Optional[Any] = Column(JSON, nullable=True)
+    departments: Optional[Any] = Column(JSON, nullable=True)
+    pathways: Optional[Any] = Column(JSON, nullable=True)
+    relevance_status: str = Column(String(48), nullable=False, default="active")
+    filter_reason: Optional[str] = Column(Text, nullable=True)
+    relevance: Optional[int] = Column(Integer, nullable=True)
+    urgency: Optional[int] = Column(Integer, nullable=True)
+    source_quality: Optional[int] = Column(Integer, nullable=True)
+    novelty: Optional[str] = Column(String(32), nullable=True)
+    duplicate_of_change_id: Optional[str] = Column(String(36), nullable=True)
+    priority_score: Optional[float] = Column(Float, nullable=True)
+    ranking_basis: Optional[Any] = Column(JSON, nullable=True)
+    created_at: datetime = Column(UTCDateTime(), nullable=False, default=_utc_now)
+    updated_at: datetime = Column(UTCDateTime(), nullable=False, default=_utc_now, onupdate=_utc_now)
+    schema_version: str = Column(String(16), nullable=False, default="1.0")
+
+
+@event.listens_for(GuidanceStatement, "before_update")
+def _block_statement_update(mapper, connection, target) -> None:
+    raise ImmutableEntityError("GuidanceStatement rows are immutable provenance records.")
+
+
+@event.listens_for(GuidanceStatement, "before_delete")
+def _block_statement_delete(mapper, connection, target) -> None:
+    raise ImmutableEntityError("GuidanceStatement rows are immutable provenance records.")

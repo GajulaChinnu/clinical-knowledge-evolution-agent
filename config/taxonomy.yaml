@@ -10,40 +10,50 @@ departments:
     pathways:
       - id: t2d-glycaemic
         name: Type 2 diabetes glycaemic management
+        treatments: [metformin, gliclazide, empagliflozin]
       - id: diabetic-kidney
         name: Diabetic kidney disease
+        treatments: [metformin, empagliflozin]
   - id: cardiology
     name: Cardiology
     synonyms: [cardiac, heart]
     pathways:
       - id: af-stroke-prevention
         name: Atrial fibrillation stroke prevention
+        treatments: [apixaban, dabigatran, aspirin]
       - id: secondary-prevention
         name: Cardiovascular secondary prevention
+        treatments: [aspirin, simvastatin, ramipril]
   - id: nephrology
     name: Nephrology
     synonyms: [renal, kidney]
     pathways:
       - id: ckd-albuminuria
         name: Chronic kidney disease with albuminuria
+        treatments: [ramipril, losartan, empagliflozin, dabigatran]
       - id: ckd-metabolic
         name: CKD metabolic complications
+        treatments: [sodium-bicarbonate]
   - id: infectious-diseases
     name: Infectious Diseases
     synonyms: [infectious disease, infection, microbiology, id]
     pathways:
       - id: cap
         name: Community-acquired pneumonia
+        treatments: [amoxicillin, clarithromycin, doxycycline, levofloxacin, ciprofloxacin]
       - id: antimicrobial-stewardship
         name: Antimicrobial stewardship
+        treatments: [levofloxacin, ciprofloxacin, clarithromycin, amoxicillin]
   - id: emergency-medicine
     name: Emergency Medicine
     synonyms: [emergency, a&e, ed, emergency department]
     pathways:
       - id: anaphylaxis
         name: Anaphylaxis management
+        treatments: [adrenaline, chlorphenamine]
       - id: resuscitation
         name: Resuscitation
+        treatments: [adrenaline]
 
 treatment_classes:
   - id: biguanide

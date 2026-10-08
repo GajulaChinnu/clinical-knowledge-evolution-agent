@@ -7,6 +7,7 @@ artifact SHA-256 is kept for integrity.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -21,6 +22,7 @@ from app.schemas.transitions import DOCUMENT_TRANSITIONS, validate_transition
 from app.services.config_service import AppConfig, load_config
 from app.services.file_hash import compute_sha256
 from app.services.source_documents import artifact_format, content_sha256, load_source_text
+from app.services.watchlist import Watchlist, WatchlistEntry, WatchlistError, version_key
 
 logger = logging.getLogger("ckea.monitoring")
 
@@ -39,6 +41,37 @@ class ScanResult:
     def new(self) -> int:
         """Alias for new_documents."""
         return self.new_documents
+
+
+@dataclass
+class SourceVersionInfo:
+    """One stored version of a monitored source."""
+    document_id: str
+    internal_version: str
+    publisher_version: Optional[str]
+    published_date: Optional[str]
+    sha256: str
+    ingested_at: Optional[datetime]
+
+
+@dataclass
+class SourceCheckResult:
+    """Outcome of checking one watchlist source for new versions."""
+    entry_id: str
+    source_identity: str
+    checked_at: datetime
+    new_document_ids: List[str] = field(default_factory=list)
+    unchanged: int = 0
+    versions: List[SourceVersionInfo] = field(default_factory=list)
+    error: Optional[str] = None
+
+    @property
+    def latest(self) -> Optional[SourceVersionInfo]:
+        return self.versions[-1] if self.versions else None
+
+    @property
+    def previous(self) -> Optional[SourceVersionInfo]:
+        return self.versions[-2] if len(self.versions) > 1 else None
 
 
 class MonitoringAgent:
@@ -323,3 +356,134 @@ class MonitoringAgent:
 
             result.failed += 1
             result.failure_ids.append(failure.id)
+
+    # ==========================================================================
+    # WATCHLIST MONITORING (defined source list; corpus or URL locations)
+    # ==========================================================================
+
+    def version_history(self, source_identity: str, session: Optional[Session] = None) -> List[SourceVersionInfo]:
+        """Stored versions of a source, oldest first (failed records excluded)."""
+        owns = session is None
+        session = session or self.session_factory()
+        try:
+            docs = (
+                session.query(IngestedDocument)
+                .filter(IngestedDocument.source_identifier == source_identity)
+                .filter(IngestedDocument.status != DocumentStatus.FAILED.value)
+                .order_by(IngestedDocument.created_at)
+                .all()
+            )
+            return [
+                SourceVersionInfo(
+                    document_id=d.id,
+                    internal_version=d.source_version,
+                    publisher_version=(d.doc_metadata or {}).get("publisher_version"),
+                    published_date=(d.doc_metadata or {}).get("published_date"),
+                    sha256=d.sha256_hash,
+                    ingested_at=d.ingest_timestamp,
+                )
+                for d in docs
+            ]
+        finally:
+            if owns:
+                session.close()
+
+    def check_watchlist(
+        self,
+        watchlist: Watchlist,
+        entries: Optional[List[WatchlistEntry]] = None,
+        url_service: Any = None,
+    ) -> List[SourceCheckResult]:
+        """Check watchlist sources (all, or the given entries) and ingest new versions."""
+        return [self.check_watchlist_entry(e, watchlist, url_service) for e in (entries or list(watchlist))]
+
+    def check_watchlist_entry(
+        self,
+        entry: WatchlistEntry,
+        watchlist: Watchlist,
+        url_service: Any = None,
+    ) -> SourceCheckResult:
+        """Ingest any versions of one watchlist source that are newer than what is stored.
+
+        Corpus sources publish versioned files; every newer published version is ingested in
+        order so the lineage v1 -> v2 is preserved. URL sources are fetched once per check.
+        Failures are recorded as IngestionFailure and returned (never silently dropped).
+        """
+        result = SourceCheckResult(entry.id, entry.source_identity, datetime.now(timezone.utc))
+        try:
+            if entry.is_corpus:
+                self._check_corpus_entry(entry, watchlist, result)
+            elif entry.is_url:
+                self._check_url_entry(entry, url_service, result)
+            else:
+                raise WatchlistError(f"Unsupported location for '{entry.id}': {entry.location}")
+        except (WatchlistError, OSError, ValueError) as e:
+            result.error = f"{type(e).__name__}: {e}"
+            self._record_watchlist_failure(entry, e)
+        except Exception as e:  # URL ingestion raises a family of provider errors; record, never drop
+            result.error = f"{type(e).__name__}: {e}"
+            self._record_watchlist_failure(entry, e)
+        result.versions = self.version_history(entry.source_identity)
+        return result
+
+    def _check_corpus_entry(self, entry: WatchlistEntry, watchlist: Watchlist, result: SourceCheckResult) -> None:
+        stored = self.version_history(entry.source_identity)
+        stored_publisher = {v.publisher_version for v in stored if v.publisher_version}
+        latest_key = max((version_key(v) for v in stored_publisher), default=None)
+        self.source_dir.mkdir(parents=True, exist_ok=True)
+
+        for version in watchlist.corpus_versions(entry):
+            if version.version in stored_publisher:
+                continue
+            if latest_key is not None and version.version_key < latest_key:
+                logger.info("Skipping older corpus version %s of %s (latest stored is newer).", version.version, entry.id)
+                continue
+            artifact = (self.source_dir / f"{entry.id}__v{version.version}.md").resolve()
+            if artifact.parent != self.source_dir.resolve():
+                raise WatchlistError(f"Unsafe artifact path for '{entry.id}'")
+            artifact.write_text(version.body, encoding="utf-8", newline="\n")
+            metadata = {
+                **entry.metadata(),
+                "publisher_version": version.version,
+                "published_date": version.published_date,
+                "input_type": "watchlist",
+                "retrieval_provider": "Watchlist corpus",
+                "routing_decision": "corpus",
+                "source_location": entry.location,
+                "source_type_label": entry.source_type,
+            }
+            scan = self.ingest_known_file(artifact, entry.source_identity, metadata)
+            result.new_document_ids.extend(scan.ingested_document_ids)
+            result.unchanged += scan.skipped
+            if scan.failed:
+                raise WatchlistError(f"Ingestion failed for {entry.id} v{version.version} (see ingestion failures).")
+            latest_key = version.version_key
+
+    def _check_url_entry(self, entry: WatchlistEntry, url_service: Any, result: SourceCheckResult) -> None:
+        if url_service is None:
+            raise WatchlistError(f"Watchlist entry '{entry.id}' is a URL source but no URL ingestion service was provided.")
+        ingestion = url_service.ingest_url(url=entry.location, source_dir=self.source_dir)
+        metadata = {
+            **entry.metadata(),
+            **ingestion.provenance_metadata(),
+            "input_type": "watchlist",
+            "source_url": entry.location,
+            "retrieval_timestamp": ingestion.retrieval_timestamp.isoformat(),
+        }
+        scan = self.ingest_known_file(ingestion.saved_path, entry.source_identity, metadata)
+        result.new_document_ids.extend(scan.ingested_document_ids)
+        result.unchanged += scan.skipped
+
+    def _record_watchlist_failure(self, entry: WatchlistEntry, error: Exception) -> None:
+        logger.error("Watchlist check failed for %s: %s", entry.id, error)
+        with self.session_factory() as session:
+            session.add(IngestionFailure(
+                source_path=f"watchlist:{entry.id} ({entry.location})",
+                error_category=type(error).__name__,
+                error_message=str(error),
+                retry_count=0,
+                retry_status="pending",
+                operator_status="unresolved",
+                schema_version="1.0",
+            ))
+            session.commit()

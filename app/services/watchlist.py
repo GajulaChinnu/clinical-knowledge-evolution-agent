@@ -17,6 +17,7 @@ from app.services.taxonomy import Taxonomy, TaxonomyError, get_taxonomy
 DEFAULT_WATCHLIST_PATH = Path("./config/watchlist.yaml")
 DEFAULT_CORPUS_ROOT = Path("./data/corpus")
 SOURCE_TYPES = ("guideline", "safety_notice", "publication")
+_ENTRY_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _VERSION_FILE = re.compile(r"^v(\d+(?:\.\d+)*)\.md$", re.IGNORECASE)
 
 
@@ -190,6 +191,8 @@ def _entry_from_dict(raw: dict, taxonomy: Taxonomy, index: int) -> WatchlistEntr
     for key in ("id", "title", "location", "source_type", "publisher", "quality_tier"):
         if raw.get(key) in (None, ""):
             raise WatchlistError(f"{where}: missing '{key}'")
+    if not _ENTRY_ID.match(str(raw["id"])):
+        raise WatchlistError(f"{where}: id must be lowercase letters, digits and hyphens")
     if raw["source_type"] not in SOURCE_TYPES:
         raise WatchlistError(f"{where}: source_type must be one of {SOURCE_TYPES}")
     tier = int(raw["quality_tier"])

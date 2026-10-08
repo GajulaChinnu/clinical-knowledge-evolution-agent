@@ -36,8 +36,8 @@ def test_database_initialization(temp_db_engine):
     inspector = inspect(temp_db_engine)
     table_names = inspector.get_table_names()
 
-    # 9 CKEA tables + alembic_version (schema revision tracking)
-    assert len(table_names) == 10
+    # 9 core CKEA tables + guidance_statements + guidance_changes + alembic_version
+    assert len(table_names) == 12
     assert "alembic_version" in table_names
 
 

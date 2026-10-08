@@ -36,6 +36,17 @@ class ExtractionAgent:
         self.llm_client = llm_client or SharedLLMClient(config=self.config)
         self.prompt_version = prompt_version
 
+    def index_guidance_statements(self, document_ids: List[str]) -> List["IndexResult"]:
+        """Query/surveillance mode: build the verbatim statement index and version change log.
+
+        Deterministic (no LLM): statements are exact substrings of the stored artifact, so every
+        citation shown to a clinician is grounded by construction. Idempotent per document.
+        """
+        from app.services.guidance_index import GuidanceIndexService
+
+        service = GuidanceIndexService(self.session_factory)
+        return [service.index_document(doc_id) for doc_id in document_ids]
+
     def process_document(self, document_id: str) -> List[ChangeRecord]:
         """Extract clinical recommendations from an ingested document.
 
