@@ -81,34 +81,49 @@ def get_session_factory(engine: Optional[Engine] = None) -> sessionmaker[Session
         expire_on_commit=False,
     )
 
+MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
+BASELINE_REVISION = "0001_baseline"
+
+
+def _alembic_config():
+    from alembic.config import Config
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
+    return cfg
+
+
 def apply_migrations(engine: Engine) -> None:
-    """Apply safe schema migrations for existing databases."""
-    from sqlalchemy import inspect, text
-    inspector = inspect(engine)
-    if not inspector.has_table("ingested_documents"):
-        return
-    columns = [col["name"] for col in inspector.get_columns("ingested_documents")]
+    """Bring the database schema to the latest Alembic revision.
 
+    - Empty database: nothing to migrate (init_db creates tables, then stamps head).
+    - Existing database without alembic_version (pre-Alembic): stamped at the baseline,
+      then upgraded, which adds any missing columns while preserving data.
+    - Tracked database: upgraded to head.
+    """
+    from alembic import command
+    from alembic.runtime.migration import MigrationContext
+    from sqlalchemy import inspect
+
+    cfg = _alembic_config()
     with engine.begin() as conn:
-        if "previous_source_version_id" not in columns:
-            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_source_version_id VARCHAR(36)"))
-        if "previous_sha256_hash" not in columns:
-            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_sha256_hash VARCHAR(64)"))
-        if "change_status" not in columns:
-            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN change_status VARCHAR(32) DEFAULT 'first_seen'"))
+        cfg.attributes["connection"] = conn
+        current = MigrationContext.configure(conn).get_current_revision()
+        if current is None:
+            if not inspect(conn).get_table_names():
+                return
+            command.stamp(cfg, BASELINE_REVISION)
+        command.upgrade(cfg, "head")
 
-        if inspector.has_table("gap_records"):
-            gap_columns = {col["name"] for col in inspector.get_columns("gap_records")}
-            for name, ddl in (
-                ("matched_section_id", "VARCHAR(128)"),
-                ("matched_section_heading", "VARCHAR(512)"),
-                ("exact_protocol_text", "TEXT"),
-                ("specific_difference", "TEXT"),
-                ("comparison_rationale", "TEXT"),
-                ("review_reason", "TEXT"),
-            ):
-                if name not in gap_columns:
-                    conn.execute(text(f"ALTER TABLE gap_records ADD COLUMN {name} {ddl}"))
+
+def _stamp_head(engine: Engine) -> None:
+    from alembic import command
+
+    cfg = _alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.stamp(cfg, "head")
+
 
 def init_db(engine: Optional[Engine] = None, db_url: Optional[str] = None) -> Engine:
     """Explicitly initialize the database schema by creating all registered tables.
@@ -126,8 +141,14 @@ def init_db(engine: Optional[Engine] = None, db_url: Optional[str] = None) -> En
     if engine is None:
         engine = get_engine(db_url=db_url)
 
+    from sqlalchemy import inspect
+
+    is_new = not inspect(engine).get_table_names()
     Base.metadata.create_all(bind=engine)
-    apply_migrations(engine)
+    if is_new:
+        _stamp_head(engine)  # created from current metadata: already at head
+    else:
+        apply_migrations(engine)
     return engine
 
 @contextmanager

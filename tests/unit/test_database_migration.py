@@ -71,3 +71,38 @@ def test_database_migration_existing_db():
         assert row is not None
         assert row.id == 'test-id'
         assert row.change_status == 'first_seen' # DEFAULT value
+
+
+def _revision(engine):
+    from alembic.runtime.migration import MigrationContext
+
+    with engine.connect() as conn:
+        return MigrationContext.configure(conn).get_current_revision()
+
+
+def test_legacy_database_is_tracked_by_alembic_and_gets_gap_evidence_columns():
+    from app.models.database import apply_migrations
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with engine.begin() as conn:  # simulate a pre-evidence gap_records table
+        conn.execute(text("DROP TABLE gap_records"))
+        conn.execute(text("CREATE TABLE gap_records (id VARCHAR(36) PRIMARY KEY, change_record_id VARCHAR(36) NOT NULL, comparison_result VARCHAR(32) NOT NULL, is_match BOOLEAN NOT NULL, status VARCHAR(32) NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, schema_version VARCHAR(16) NOT NULL)"))
+    assert _revision(engine) is None
+
+    apply_migrations(engine)
+
+    cols = {c["name"] for c in inspect(engine).get_columns("gap_records")}
+    assert {"exact_protocol_text", "matched_section_id", "review_reason"} <= cols
+    assert _revision(engine) == "0003_gap_evidence"
+    apply_migrations(engine)  # idempotent
+    assert _revision(engine) == "0003_gap_evidence"
+
+
+def test_init_db_on_new_database_is_stamped_at_head(tmp_path):
+    from app.models.database import get_engine, init_db
+
+    engine = get_engine(db_url=f"sqlite:///{tmp_path / 'fresh.db'}")
+    init_db(engine=engine)
+    assert _revision(engine) == "0003_gap_evidence"
+    engine.dispose()

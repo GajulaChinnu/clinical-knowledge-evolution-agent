@@ -1,14 +1,18 @@
-openai==3.22.1
-pydantic==2.13.5
-sqlalchemy==2.1.1
-chromadb==1.5.9
-sentence-transformers==6.1.0
-pdfplumber==0.11.10
-spacy==3.8.16
-jinja2==3.1.6
-streamlit==1.64.0
+# Pinned lock of the direct dependencies declared in pyproject.toml (tested together).
+# Install: pip install -r requirements.txt   (add `pip install -e ".[dev]"` for tests)
+alembic==1.19.2
 apscheduler==3.11.3
-transitions==0.9.3
+chromadb==1.5.9
+httpx==0.28.1
+jinja2==3.1.6
+openai==3.22.1
+pdfplumber==0.11.10
+pydantic==2.13.5
 python-dotenv==1.2.3
-pytest==9.1.1
 PyYAML==6.0.3
+sentence-transformers==6.1.0
+sqlalchemy==2.1.1
+streamlit==1.64.0
+# dev / test
+pytest==9.1.1
+pypdfium2==5.13.0
