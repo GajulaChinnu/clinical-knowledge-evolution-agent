@@ -66,7 +66,6 @@ from app.services.config_service import AppConfig, load_config
 from app.services.file_hash import compute_sha256
 from app.services.sla_scheduler import SLAScheduler
 from app.ui.streamlit_app import (
-    AUTHORIZED_REVIEWERS,
     execute_governance_action,
     get_audit_trail,
     get_brief_full_payload,

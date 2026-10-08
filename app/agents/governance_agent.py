@@ -62,7 +62,9 @@ class GovernanceAgent:
     ) -> None:
         self.config = config or load_config()
         self.session_factory = session_factory or get_session_factory(self.config.database_url)
-        self.auth_service = auth_service or ReviewerAuthorizationService()
+        self.auth_service = auth_service or ReviewerAuthorizationService(
+            registry_path=self.config.reviewer_registry_path
+        )
 
     # ==========================================================================
     # 1. REVIEWER ASSIGNMENT & REASSIGNMENT

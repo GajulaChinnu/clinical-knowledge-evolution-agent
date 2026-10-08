@@ -1,0 +1,42 @@
+# CKEA reviewer registry: the ONLY source of governance authorization.
+# A reviewer may assign, review or decide on Change Briefs only if listed here.
+# There are no name/prefix conventions: an identity that is not listed is denied.
+#
+# When SSO is configured (Streamlit st.login / OIDC), the signed-in user's email is
+# matched against `email` below to determine the acting reviewer.
+#
+# The entries below are demo identities. Replace them with your governance roster.
+version: "1.0"
+reviewers:
+  - id: dr_smith
+    name: Dr. Smith
+    role: Clinical Governance Board Member
+    email: dr.smith@example.org
+  - id: dr_jones
+    name: Dr. Jones
+    role: Senior Clinical Pharmacist
+    email: dr.jones@example.org
+  - id: cmo_director
+    name: CMO Director
+    role: Chief Medical Officer
+    email: cmo@example.org
+  - id: pharmacy_lead
+    name: Pharmacy Lead
+    role: P&T Committee Chair
+    email: pharmacy.lead@example.org
+  - id: clinical_reviewer_1
+    name: Clinical Reviewer 1
+    role: Clinical Governance Reviewer
+    email: reviewer1@example.org
+  - id: clinical_reviewer_2
+    name: Clinical Reviewer 2
+    role: Subspecialty Care Lead
+    email: reviewer2@example.org
+  - id: rapid_governance_chair
+    name: Rapid Governance Chair
+    role: Rapid Governance Committee Chair
+    email: rapid.chair@example.org
+  - id: dr_wilson
+    name: Dr. Wilson
+    role: Endocrinology Clinical Specialist
+    email: dr.wilson@example.org

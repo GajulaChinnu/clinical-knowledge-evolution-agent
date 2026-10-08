@@ -50,6 +50,7 @@ class AppConfig(BaseModel):
     chroma_dir: Path = Field(default_factory=lambda: Path("./data/chroma"))
     output_dir: Path = Field(default_factory=lambda: Path("./data/output"))
     scoring_rules_path: Path = Field(default_factory=lambda: Path("./config/scoring.yaml"))
+    reviewer_registry_path: Path = Field(default_factory=lambda: Path("./config/reviewers.yaml"))
     templates_dir: Path = Field(default_factory=lambda: Path("./templates"))
 
     # Confidence & Routing Thresholds (from AGENTS.md)
@@ -62,7 +63,11 @@ class AppConfig(BaseModel):
     sla_check_interval_minutes: int = Field(default=60, ge=1)
     sla_timezone: str = Field(default="UTC")
 
-    @field_validator("source_dir", "protocol_dir", "chroma_dir", "output_dir", "scoring_rules_path", "templates_dir", mode="before")
+    # Governance identity: when true, decisions require a Streamlit SSO (OIDC) sign-in whose
+    # email is in the reviewer registry. When false, the UI runs in a flagged demo mode.
+    sso_enabled: bool = Field(default=False)
+
+    @field_validator("source_dir", "protocol_dir", "chroma_dir", "output_dir", "scoring_rules_path", "templates_dir", "reviewer_registry_path", mode="before")
     @classmethod
     def _coerce_path(cls, v: Any) -> Path:
         if isinstance(v, Path):
@@ -137,6 +142,8 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "CHROMA_DIR": ("chroma_dir", Path),
     "OUTPUT_DIR": ("output_dir", Path),
     "SCORING_RULES_PATH": ("scoring_rules_path", Path),
+    "REVIEWER_REGISTRY_PATH": ("reviewer_registry_path", Path),
+    "SSO_ENABLED": ("sso_enabled", _parse_bool),
     "TEMPLATES_DIR": ("templates_dir", Path),
     "EXTRACTION_CONFIDENCE_THRESHOLD": ("extraction_confidence_threshold", float),
     "COMPARISON_CONFIDENCE_THRESHOLD": ("comparison_confidence_threshold", float),

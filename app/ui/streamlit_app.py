@@ -65,7 +65,7 @@ from app.services.config_service import AppConfig, load_config
 from app.services.file_hash import compute_sha256
 from app.services.pdf_parser import extract_page_texts
 from app.services.protocol_index import parse_protocol_file
-from app.services.reviewer_authorization import ReviewerAuthorizationService
+from app.services.reviewer_authorization import Reviewer, ReviewerAuthorizationService
 from app.services.source_documents import UnreadableSourceError
 from app.services.source_ingestion_service import (
     SourceIngestionService,
@@ -85,17 +85,35 @@ from app.services.url_ingestion_service import (
 
 logger = logging.getLogger("ckea.ui.streamlit_app")
 
-# Authorized reviewers available for selection
-AUTHORIZED_REVIEWERS = [
-    "dr_smith",
-    "dr_jones",
-    "cmo_director",
-    "pharmacy_lead",
-    "clinical_reviewer_1",
-    "clinical_reviewer_2",
-    "rapid_governance_chair",
-    "dr_wilson",
-]
+def resolve_acting_reviewer(
+    auth_service: ReviewerAuthorizationService,
+    config: AppConfig,
+    user: Any = None,
+) -> Tuple[Optional[Reviewer], str, Optional[str]]:
+    """Determine who is acting in the governance workspace.
+
+    Returns (reviewer, mode, message) where mode is:
+    - "sso": identity comes from the SSO sign-in; reviewer is None if the email is not registered.
+    - "signin_required": SSO is enabled but nobody is signed in; decisions are blocked.
+    - "demo": SSO disabled; the identity is self-selected and the UI must say so.
+    """
+    if not config.sso_enabled:
+        return None, "demo", (
+            "Demo mode: SSO is not enabled, so the reviewer identity below is self-selected and "
+            "unauthenticated. Enable SSO_ENABLED with an OIDC provider before clinical use."
+        )
+    user = user if user is not None else st.user
+    try:
+        logged_in = bool(user.is_logged_in)
+        email = user.get("email") if hasattr(user, "get") else getattr(user, "email", None)
+    except (AttributeError, KeyError):
+        logged_in, email = False, None
+    if not logged_in:
+        return None, "signin_required", "Sign in to record governance decisions."
+    reviewer = auth_service.reviewer_for_email(email)
+    if reviewer is None:
+        return None, "sso", f"Signed in as {email}, who is not in the reviewer registry. Decisions are blocked."
+    return reviewer, "sso", None
 
 
 # ==============================================================================
@@ -2152,11 +2170,23 @@ def render_governance_view(session_factory: sessionmaker[Session], governance_ag
                 horizontal=True,
             )
 
-            reviewer_id = st.selectbox(
-                "Authorized Reviewer Identity:",
-                options=AUTHORIZED_REVIEWERS,
-                index=0,
+            acting, identity_mode, identity_message = resolve_acting_reviewer(
+                governance_agent.auth_service, governance_agent.config
             )
+            if identity_mode == "demo":
+                st.warning(identity_message)
+                registered = governance_agent.auth_service.list_reviewers()
+                reviewer_id = st.selectbox(
+                    "Reviewer (demo identity):",
+                    options=[r.reviewer_id for r in registered],
+                    format_func=lambda rid: next(f"{r.name} — {r.role}" for r in registered if r.reviewer_id == rid),
+                )
+            elif acting is not None:
+                reviewer_id = acting.reviewer_id
+                st.write(f"**Signed in as:** {acting.name} — {acting.role}")
+            else:
+                reviewer_id = None
+                st.error(identity_message)
 
             rationale = st.text_area(
                 "Clinical Rationale (Mandatory):",
@@ -2171,7 +2201,9 @@ def render_governance_view(session_factory: sessionmaker[Session], governance_ag
 
             submit_decision = st.form_submit_button("Record Governance Decision", type="primary", use_container_width=True)
 
-            if submit_decision:
+            if submit_decision and not reviewer_id:
+                st.error("No authenticated, registered reviewer: decision not recorded.")
+            elif submit_decision:
                 follow_up_dt = None
                 if action == "defer":
                     follow_up_dt = datetime.combine(
