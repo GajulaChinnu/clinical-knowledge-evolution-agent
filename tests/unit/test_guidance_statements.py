@@ -233,3 +233,15 @@ def test_build_query_normalises_and_guards():
 def test_context_rejects_unknown_fields():
     with pytest.raises(ValueError):
         PatientContext(name="Jane")
+
+
+def test_measure_terms_match_whole_words_only():
+    # "agent" must not be read as "age", which once produced a spurious age threshold of 2.
+    p = parse_statement("Metformin 500mg once daily is the preferred initial pharmacologic agent for type 2 diabetes.", TAXONOMY)
+    assert p.thresholds == []
+
+
+def test_route_words_are_case_insensitive():
+    assert parse_statement("Intravenous adrenaline must not be given as a bolus.", TAXONOMY).route == "intravenous"
+    assert parse_statement("give 0.5 mg IM", TAXONOMY).route == "intramuscular"
+    assert parse_statement("im fine", TAXONOMY).route is None

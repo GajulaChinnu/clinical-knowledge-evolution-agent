@@ -1,11 +1,12 @@
 """CKEA Comparison Agent for evaluating extracted recommendations against institutional protocols."""
 
+from dataclasses import dataclass
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.database import get_session_factory
-from app.models.entities import ChangeRecord, GapRecord
+from app.models.entities import ChangeRecord, GapRecord, GuidanceChange, GuidanceStatement, IngestedDocument
 from app.schemas.changes import ChangeStatus
 from app.schemas.comparison import ComparisonResponse
 from app.schemas.gaps import ComparisonResult, DifferenceType, GapStatus
@@ -14,6 +15,24 @@ from app.schemas.transitions import CHANGE_TRANSITIONS, validate_transition
 from app.services.config_service import AppConfig, load_config
 from app.services.llm_client import SharedLLMClient
 from app.services.protocol_index import ProtocolIndexService
+from app.schemas.clinician_query import ClinicianQuery
+from app.schemas.protocol import ProtocolDocument
+from app.schemas.treatment_check import ComparisonOutcome, Finding, VersionComparison
+from app.services.clinical_statements import parse_statement
+from app.services.taxonomy import Taxonomy, get_taxonomy
+from app.services.treatment_comparison import (
+    GUIDANCE_SOURCE_TYPES,
+    StatementRef,
+    build_citation,
+    compare_protocol,
+    contraindication_applicability,
+    egfr_condition,
+    initiation_score,
+    mentions_plan,
+    plan_differences,
+    to_diffs,
+)
+from app.services.clinical_statements import attribute_differences
 
 _GAP_EVIDENCE_FIELDS = (
     "matched_section_id",
@@ -25,6 +44,14 @@ _GAP_EVIDENCE_FIELDS = (
 )
 
 logger = logging.getLogger("ckea.comparison")
+
+
+@dataclass
+class SourceScope:
+    """Latest and previous stored versions of one monitored source, for a clinician query."""
+    watchlist_id: str
+    latest_document_id: Optional[str]
+    previous_document_id: Optional[str] = None
 
 
 class ComparisonAgent:
@@ -41,8 +68,192 @@ class ComparisonAgent:
         self.config = config or load_config()
         self.session_factory = session_factory or get_session_factory()
         self.llm_client = llm_client or SharedLLMClient(config=self.config)
-        self.protocol_index_service = protocol_index_service or ProtocolIndexService(config=self.config)
+        self._protocol_index_service = protocol_index_service
         self.top_k = top_k
+
+    @property
+    def protocol_index_service(self) -> ProtocolIndexService:
+        """Chroma protocol index, created on first use (the clinician query path does not need it)."""
+        if self._protocol_index_service is None:
+            self._protocol_index_service = ProtocolIndexService(config=self.config)
+        return self._protocol_index_service
+
+    @protocol_index_service.setter
+    def protocol_index_service(self, value: ProtocolIndexService) -> None:
+        self._protocol_index_service = value
+
+    # ==========================================================================
+    # CLINICIAN QUERY MODE: three-way comparison for a planned treatment
+    # ==========================================================================
+
+    def compare_treatment_plan(
+        self,
+        query: ClinicianQuery,
+        scopes: Sequence[SourceScope],
+        protocols: Sequence[ProtocolDocument],
+        taxonomy: Optional[Taxonomy] = None,
+    ) -> ComparisonOutcome:
+        """(a) plan vs latest guidance, (b) previous vs latest version, (c) protocol vs latest.
+
+        Deterministic; every finding cites a verbatim GuidanceStatement. Conditions the
+        de-identified context cannot settle are reported as check_applicability, never guessed.
+        """
+        taxonomy = taxonomy or get_taxonomy()
+        outcome = ComparisonOutcome()
+        if not query.treatment_ids:
+            outcome.retrieval = "none"
+            outcome.notes.append(
+                "The planned treatment is not in the controlled treatment vocabulary, so no grounded "
+                "guidance could be matched."
+            )
+            return outcome
+
+        plan = query.plan.parsed
+        with self.session_factory() as session:
+            latest_refs: List[StatementRef] = []
+            change_refs: List[Tuple[GuidanceChange, Optional[StatementRef], Optional[StatementRef]]] = []
+            for scope in scopes:
+                if not scope.latest_document_id:
+                    continue
+                doc = session.get(IngestedDocument, scope.latest_document_id)
+                if doc is None:
+                    continue
+                for stmt in (session.query(GuidanceStatement)
+                             .filter_by(ingested_document_id=doc.id).order_by(GuidanceStatement.sequence)):
+                    latest_refs.append(StatementRef(stmt, doc, parse_statement(stmt.verbatim_text, taxonomy, stmt.source_type)))
+                for change in session.query(GuidanceChange).filter_by(to_document_id=doc.id):
+                    change_refs.append((change, self._ref(session, change.from_statement_id, taxonomy),
+                                        self._ref(session, change.to_statement_id, taxonomy)))
+
+            findings = self._plan_findings(query, latest_refs, change_refs, taxonomy)
+            outcome.findings = findings
+            outcome.version_changes = self._version_changes(query, change_refs, taxonomy)
+            outcome.protocol_positions = [
+                compare_protocol(p, query, [r for r in latest_refs if r.stmt.source_type in GUIDANCE_SOURCE_TYPES],
+                                 [c for c in change_refs if c[0].source_type in GUIDANCE_SOURCE_TYPES], taxonomy)
+                for p in protocols
+            ]
+        return outcome
+
+    @staticmethod
+    def _ref(session: Session, statement_id: Optional[str], taxonomy: Taxonomy) -> Optional[StatementRef]:
+        if not statement_id:
+            return None
+        stmt = session.get(GuidanceStatement, statement_id)
+        if stmt is None:
+            return None
+        doc = session.get(IngestedDocument, stmt.ingested_document_id)
+        return StatementRef(stmt, doc, parse_statement(stmt.verbatim_text, taxonomy, stmt.source_type))
+
+    def _plan_findings(self, query, latest_refs, change_refs, taxonomy) -> List[Finding]:
+        plan = query.plan.parsed
+        findings: List[Finding] = []
+        withdrawn_from: Dict[str, StatementRef] = {
+            new.stmt.id: old for change, old, new in change_refs
+            if change.change_category == "withdrawn" and old is not None and new is not None
+        }
+        recommendation_findings: List[Tuple[Finding, StatementRef, float]] = []
+
+        for ref in latest_refs:
+            parsed, stmt = ref.parsed, ref.stmt
+            direct, via_class = mentions_plan(parsed, query, taxonomy)
+            if not (direct or via_class):
+                continue
+            meta = dict(treatments=parsed.treatments, departments=list(stmt.departments or []),
+                        pathways=list(stmt.pathways or []))
+            citation = build_citation(stmt, ref.doc)
+
+            if parsed.statement_type == "contraindication":
+                relation, basis = contraindication_applicability(parsed, query, taxonomy)
+                findings.append(Finding(
+                    kind="contraindication", relation=relation, citation=citation,
+                    explanation={"applies": "Contraindication applies to this patient.",
+                                 "not_applicable": "Contraindication does not apply on the information provided.",
+                                 "check_applicability": "Contraindication may apply: confirm before prescribing."}[relation],
+                    applicability_basis=basis, **meta,
+                ))
+            elif parsed.statement_type == "safety_warning":
+                findings.append(Finding(kind="safety_warning", relation="informational", citation=citation,
+                                        explanation="Safety warning relevant to this treatment.", **meta))
+            elif parsed.statement_type == "withdrawal" and direct:
+                old = withdrawn_from.get(stmt.id)
+                relation = "informational"
+                prev_cit = None
+                if old is not None:
+                    prev_cit = build_citation(old.stmt, old.doc)
+                    diffs, compared = plan_differences(plan, old.parsed)
+                    if not diffs:
+                        relation = "withdrawn_matches_plan"
+                findings.append(Finding(
+                    kind="withdrawal", relation=relation, citation=citation, previous_citation=prev_cit,
+                    change_category="withdrawn",
+                    explanation=("The recommendation this plan follows has been withdrawn in the latest version."
+                                 if relation == "withdrawn_matches_plan" else "A related recommendation was withdrawn."),
+                    **meta,
+                ))
+            elif parsed.statement_type == "evidence":
+                findings.append(Finding(kind="evidence", relation="informational", citation=citation,
+                                        explanation="Published evidence about this treatment.", **meta))
+            elif parsed.statement_type == "recommendation" and direct:
+                condition, basis = egfr_condition(parsed, query)
+                diffs, compared = plan_differences(plan, parsed)
+                if condition == "not_applicable":
+                    relation, explanation = "not_applicable", f"Conditional recommendation not applicable: {basis}."
+                elif not compared:
+                    relation, explanation = "informational", "Current recommendation for this treatment."
+                elif diffs:
+                    relation, explanation = "differs_from_plan", "Planned treatment differs from this current recommendation."
+                else:
+                    relation, explanation = "matches_plan", "Planned treatment matches this current recommendation."
+                finding = Finding(kind="supporting_recommendation", relation=relation, citation=citation,
+                                  explanation=explanation, differences=diffs, applicability_basis=basis or None, **meta)
+                is_guidance = stmt.source_type in GUIDANCE_SOURCE_TYPES
+                score = initiation_score(parsed, plan) + (10.0 if is_guidance else 0.0)
+                if relation in ("matches_plan", "differs_from_plan") and compared:
+                    recommendation_findings.append((finding, ref, score))
+                findings.append(finding)
+
+        # Governing recommendation: the best match if the plan matches any current recommendation,
+        # otherwise the closest current recommendation it differs from.
+        matches = [x for x in recommendation_findings if x[0].relation == "matches_plan"]
+        pool = matches or recommendation_findings
+        if pool:
+            governing = max(pool, key=lambda x: x[2])[0]
+            governing.kind = "governing_recommendation"
+            for change, old, new in change_refs:
+                if new is not None and new.stmt.id == governing.citation.statement_id and old is not None:
+                    governing.previous_citation = build_citation(old.stmt, old.doc)
+                    governing.change_category = change.change_category
+        return findings
+
+    def _version_changes(self, query, change_refs, taxonomy) -> List[VersionComparison]:
+        plan = query.plan.parsed
+        comparisons: List[VersionComparison] = []
+        for change, old, new in change_refs:
+            if change.change_category in ("no_practice_change", "unchanged"):
+                continue
+            refs = [r for r in (old, new) if r is not None]
+            if not any(mentions_plan(r.parsed, query, taxonomy)[0] for r in refs):
+                continue
+            if old is None and change.from_document_id is None:
+                continue  # first version of a source: nothing changed relative to an earlier version
+            plan_matches_previous = False
+            if old is not None:
+                diffs_old, compared = plan_differences(plan, old.parsed)
+                if not diffs_old and (new is None or new.stmt.statement_type == "withdrawal"
+                                      or plan_differences(plan, new.parsed)[0]):
+                    plan_matches_previous = compared or new is None or new.stmt.statement_type == "withdrawal"
+            meta = (new or old).doc.doc_metadata or {}
+            comparisons.append(VersionComparison(
+                source_identity=change.source_identity,
+                source_title=meta.get("title"),
+                change_category=change.change_category,
+                previous=build_citation(old.stmt, old.doc) if old else None,
+                latest=build_citation(new.stmt, new.doc) if new else None,
+                differences=to_diffs(change_diffs(old, new)),
+                plan_matches_previous=plan_matches_previous,
+            ))
+        return comparisons
 
     def process_change_record(self, change_record_id: str) -> GapRecord:
         """Compare an extracted clinical recommendation against active protocols in ChromaDB.
@@ -325,3 +536,9 @@ class ComparisonAgent:
             )
             session.add(gap)
             return gap
+
+
+def change_diffs(old: Optional[StatementRef], new: Optional[StatementRef]):
+    if old is None or new is None or new.stmt.statement_type == "withdrawal":
+        return []
+    return attribute_differences(old.parsed, new.parsed)

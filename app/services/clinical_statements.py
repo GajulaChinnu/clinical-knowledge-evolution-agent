@@ -34,11 +34,12 @@ _FREQUENCIES = [
 _EVERY = re.compile(r"\bevery\s+(\d+)\s*(minutes?|hours?|days?|weeks?)\b", re.I)
 _INTERVAL = re.compile(r"\bafter\s+(\d+)\s*(minutes?|hours?)\b", re.I)
 _DURATION = re.compile(r"\bfor\s+(\d+)\s*(days?|weeks?|months?)\b", re.I)
+# Route words match in any case; abbreviations (IM, IV, SC, PO) only in capitals.
 _ROUTES = [
-    (re.compile(r"\bintramuscular(?:ly)?\b|\bIM\b"), "intramuscular"),
-    (re.compile(r"\bintravenous(?:ly)?\b|\bIV\b"), "intravenous"),
-    (re.compile(r"\bsubcutaneous(?:ly)?\b|\bSC\b|\bs/c\b"), "subcutaneous"),
-    (re.compile(r"\boral(?:ly)?\b|\bby mouth\b|\bPO\b"), "oral"),
+    (re.compile(r"\b(?i:intramuscular(?:ly)?)\b|\bIM\b"), "intramuscular"),
+    (re.compile(r"\b(?i:intravenous(?:ly)?)\b|\bIV\b"), "intravenous"),
+    (re.compile(r"\b(?i:subcutaneous(?:ly)?)\b|\bSC\b|\bs/c\b"), "subcutaneous"),
+    (re.compile(r"\b(?i:oral(?:ly)?|by mouth)\b|\bPO\b"), "oral"),
 ]
 
 _WITHDRAWAL = re.compile(r"\bwithdrawn\b|\bno longer recommended\b", re.I)
@@ -63,6 +64,9 @@ _MEASURES = [
     ("hba1c", "hba1c"), ("potassium", "potassium"), ("curb-65 score", "curb65"), ("age", "age"),
     ("weight", "weight"), ("within", "time_window"),
 ]
+_MEASURE_PATTERNS = [
+    (re.compile(r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9])"), key) for term, key in _MEASURES
+]
 _NUMBER = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w.]*\d)")
 
 
@@ -76,6 +80,7 @@ class Dose:
 class Threshold:
     measure: str
     value: float
+    comparator: str = "="  # "<", "<=", ">=", ">", "=", "range_low", "range_high"
 
 
 @dataclass
@@ -146,6 +151,31 @@ def _consumed(spans: Sequence[Tuple[int, int]], start: int, end: int) -> bool:
     return any(a <= start and end <= b for a, b in spans)
 
 
+_BELOW = re.compile(r"(?:below|less than|under|fewer than|<)\s*$")
+_ABOVE_BEFORE = re.compile(r"(?:above|more than|greater than|over|at least|>=|>)\s*$")
+_AT_LEAST_AFTER = re.compile(r"^\s*(?:[a-z/%.\d-]+\s*){0,2}?(?:or above|or more|or older|or greater|or over|and above)")
+_AT_MOST_AFTER = re.compile(r"^\s*(?:[a-z/%.\d-]+\s*){0,2}?(?:or below|or less|or under|or younger)")
+
+
+def _comparator(lowered: str, start: int, end: int) -> str:
+    """Direction of a threshold from the words around its number ("below 30", "45 or above")."""
+    before = lowered[max(0, start - 20):start]
+    after = lowered[end:end + 30]
+    if re.search(r"(?:^|\s)to\s*$", before):
+        return "range_high"
+    if re.match(r"^\s*(?:[a-z/%.\d-]+\s*){0,2}?to\s+\d", after):
+        return "range_low"
+    if _BELOW.search(before):
+        return "<"
+    if _ABOVE_BEFORE.search(before):
+        return ">"
+    if _AT_LEAST_AFTER.match(after):
+        return ">="
+    if _AT_MOST_AFTER.match(after):
+        return "<="
+    return "="
+
+
 def parse_statement(text: str, taxonomy: Taxonomy, source_type: Optional[str] = None) -> ParsedStatement:
     """Parse one statement (or a planned treatment) into structured attributes."""
     parsed = ParsedStatement(text=text)
@@ -191,13 +221,13 @@ def parse_statement(text: str, taxonomy: Taxonomy, source_type: Optional[str] = 
         before = lowered[max(0, m.start() - 60):m.start()]
         measure = None
         best = (-1, 0)  # (end position of the term, term length): nearest term wins, longest on ties
-        for term, key in _MEASURES:
-            idx = before.rfind(term)
-            if idx >= 0 and (idx + len(term), len(term)) > best:
-                best, measure = (idx + len(term), len(term)), key
+        for pattern, key in _MEASURE_PATTERNS:
+            for found in pattern.finditer(before):
+                if (found.end(), found.end() - found.start()) > best:
+                    best, measure = (found.end(), found.end() - found.start()), key
         if measure is None:
             continue  # bare numbers (e.g. "1.73m2", ages in trial sizes) are not thresholds
-        parsed.thresholds.append(Threshold(measure, float(m.group(1))))
+        parsed.thresholds.append(Threshold(measure, float(m.group(1)), _comparator(lowered, m.start(), m.end())))
 
     if _WITHDRAWAL.search(body):
         parsed.statement_type = "withdrawal"
