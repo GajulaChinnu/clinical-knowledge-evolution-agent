@@ -12,7 +12,7 @@ demo mode (see app.ui.streamlit_app.resolve_acting_reviewer).
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set, Union
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import yaml
 
@@ -25,6 +25,9 @@ class ReviewerRegistryError(ValueError):
     """Raised when the reviewer registry file is missing or malformed."""
 
 
+GOVERNANCE_ROLES = ("specialist", "governance_chair", "governance_reviewer")
+
+
 @dataclass(frozen=True)
 class Reviewer:
     """A named, authorized clinical governance reviewer."""
@@ -32,6 +35,8 @@ class Reviewer:
     name: str
     role: str
     email: Optional[str] = None
+    governance_role: str = "governance_reviewer"
+    specialties: Tuple[str, ...] = ()
 
 
 def load_reviewer_registry(path: Union[str, Path]) -> List[Reviewer]:
@@ -54,7 +59,21 @@ def load_reviewer_registry(path: Union[str, Path]) -> List[Reviewer]:
             raise ReviewerRegistryError(f"Duplicate reviewer id '{r_id}' in {path}")
         seen.add(r_id)
         email = str(entry["email"]).strip().lower() if entry.get("email") else None
-        reviewers.append(Reviewer(r_id, str(entry.get("name") or r_id), str(entry["role"]), email))
+        governance_role = str(entry.get("governance_role") or "governance_reviewer")
+        if governance_role not in GOVERNANCE_ROLES:
+            raise ReviewerRegistryError(f"Reviewer '{r_id}': governance_role must be one of {GOVERNANCE_ROLES}")
+        specialties = tuple(str(x).strip() for x in (entry.get("specialties") or []))
+        if specialties:
+            from app.services.taxonomy import TaxonomyError, get_taxonomy
+
+            try:
+                specialties = tuple(get_taxonomy().validate_departments(specialties))
+            except TaxonomyError as e:
+                raise ReviewerRegistryError(f"Reviewer '{r_id}': {e}") from e
+        if governance_role == "specialist" and not specialties:
+            raise ReviewerRegistryError(f"Reviewer '{r_id}': a specialist needs at least one specialty")
+        reviewers.append(Reviewer(r_id, str(entry.get("name") or r_id), str(entry["role"]), email,
+                                  governance_role, specialties))
     return reviewers
 
 
@@ -109,6 +128,22 @@ class ReviewerAuthorizationService:
 
     def list_reviewers(self) -> List[Reviewer]:
         return [r for r in self._reviewers.values() if self.is_authorized(r.reviewer_id)]
+
+    def specialists_for(self, department: str) -> List[Reviewer]:
+        """Authorized specialists for a department, in deterministic (id) order."""
+        return sorted((r for r in self.list_reviewers()
+                       if r.governance_role == "specialist" and department in r.specialties),
+                      key=lambda r: r.reviewer_id)
+
+    def chairs(self) -> List[Reviewer]:
+        return sorted((r for r in self.list_reviewers() if r.governance_role == "governance_chair"),
+                      key=lambda r: r.reviewer_id)
+
+    def governance_pool(self) -> List[Reviewer]:
+        """Reviewers for standard/low-impact briefs (governance reviewers, then chairs)."""
+        pool = sorted((r for r in self.list_reviewers() if r.governance_role == "governance_reviewer"),
+                      key=lambda r: r.reviewer_id)
+        return pool or self.chairs()
 
     def register_reviewer(self, reviewer_id: str, role: str = "Clinical Governance Reviewer") -> None:
         """Register a reviewer as authorized."""

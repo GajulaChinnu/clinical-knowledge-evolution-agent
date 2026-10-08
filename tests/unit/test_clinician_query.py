@@ -125,15 +125,26 @@ def test_identifiers_rejected_before_anything_runs(env):
         assert session.query(ClinicianQueryRecord).count() == before
 
 
-def test_out_of_date_protocol_flags_governance_once(env):
+def test_out_of_date_protocol_gets_one_routed_brief(env):
     first = ask(env, "Emergency Medicine", "intramuscular adrenaline 0.5 mg")
     second = ask(env, "Emergency Medicine", "intramuscular adrenaline 0.5 mg")
-    assert first.governance and first.governance[0].status == "flagged_to_governance"
+    assert first.governance[0].status == "assigned" and first.governance[0].brief_id
+    assert first.governance[0].brief_id == second.governance[0].brief_id
+
+
+def test_brief_creation_failure_is_flagged_and_shown(env):
+    original = env.workflow.briefing.process_impact_record
+    env.workflow.briefing.process_impact_record = MagicMock(side_effect=RuntimeError("renderer offline"))
+    try:
+        answer = ask(env, "Nephrology", "sodium bicarbonate 500 mg three times daily")
+    finally:
+        env.workflow.briefing.process_impact_record = original
+    assert any(s.agent == "Governance" and s.status == "failed" for s in answer.steps)
+    flagged = [g for g in answer.governance if g.protocol_id == "PROT-NEPH-001"]
+    assert flagged and flagged[0].status == "flagged_to_governance"
     with env.session_factory() as session:
-        flags = [n for n in session.query(Notification).filter_by(notification_type="protocol_out_of_date")
-                 if n.payload["protocol_id"] == "PROT-EM-001"]
-        assert len(flags) == 1
-    assert first.governance[0].message == second.governance[0].message
+        assert any(n.payload["protocol_id"] == "PROT-NEPH-001"
+                   for n in session.query(Notification).filter_by(notification_type="protocol_out_of_date"))
 
 
 def test_aligned_protocol_needs_no_governance(env):

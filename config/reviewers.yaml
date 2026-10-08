@@ -2,41 +2,80 @@
 # A reviewer may assign, review or decide on Change Briefs only if listed here.
 # There are no name/prefix conventions: an identity that is not listed is denied.
 #
+# governance_role:
+#   specialist           routed high-impact briefs for their specialties (taxonomy department ids)
+#   governance_chair     routed high-impact briefs with no department, and escalations
+#   governance_reviewer  routed standard/low-impact briefs (governance pool)
+#
 # When SSO is configured (Streamlit st.login / OIDC), the signed-in user's email is
 # matched against `email` below to determine the acting reviewer.
 #
-# The entries below are demo identities. Replace them with your governance roster.
-version: "1.0"
+# The entries below are SYNTHETIC demo identities. Replace them with your governance roster.
+version: "1.1"
 reviewers:
   - id: dr_smith
     name: Dr. Smith
     role: Clinical Governance Board Member
+    governance_role: governance_chair
+    specialties: [endocrinology]
     email: dr.smith@example.org
-  - id: dr_jones
-    name: Dr. Jones
-    role: Senior Clinical Pharmacist
-    email: dr.jones@example.org
-  - id: cmo_director
-    name: CMO Director
-    role: Chief Medical Officer
-    email: cmo@example.org
-  - id: pharmacy_lead
-    name: Pharmacy Lead
-    role: P&T Committee Chair
-    email: pharmacy.lead@example.org
-  - id: clinical_reviewer_1
-    name: Clinical Reviewer 1
-    role: Clinical Governance Reviewer
-    email: reviewer1@example.org
-  - id: clinical_reviewer_2
-    name: Clinical Reviewer 2
-    role: Subspecialty Care Lead
-    email: reviewer2@example.org
-  - id: rapid_governance_chair
-    name: Rapid Governance Chair
-    role: Rapid Governance Committee Chair
-    email: rapid.chair@example.org
   - id: dr_wilson
     name: Dr. Wilson
     role: Endocrinology Clinical Specialist
+    governance_role: specialist
+    specialties: [endocrinology]
     email: dr.wilson@example.org
+  - id: cardiology_specialist
+    name: Cardiology Specialist (demo)
+    role: Consultant Cardiologist
+    governance_role: specialist
+    specialties: [cardiology]
+    email: cardiology.specialist@example.org
+  - id: clinical_reviewer_2
+    name: Clinical Reviewer 2
+    role: Subspecialty Care Lead (Nephrology)
+    governance_role: specialist
+    specialties: [nephrology]
+    email: reviewer2@example.org
+  - id: infection_specialist
+    name: Infection Specialist (demo)
+    role: Consultant in Infectious Diseases
+    governance_role: specialist
+    specialties: [infectious-diseases]
+    email: infection.specialist@example.org
+  - id: emergency_specialist
+    name: Emergency Medicine Specialist (demo)
+    role: Consultant in Emergency Medicine
+    governance_role: specialist
+    specialties: [emergency-medicine]
+    email: emergency.specialist@example.org
+  - id: cmo_director
+    name: CMO Director
+    role: Chief Medical Officer
+    governance_role: governance_chair
+    specialties: []
+    email: cmo@example.org
+  - id: rapid_governance_chair
+    name: Rapid Governance Chair
+    role: Rapid Governance Committee Chair
+    governance_role: governance_chair
+    specialties: []
+    email: rapid.chair@example.org
+  - id: clinical_reviewer_1
+    name: Clinical Reviewer 1
+    role: Clinical Governance Reviewer
+    governance_role: governance_reviewer
+    specialties: []
+    email: reviewer1@example.org
+  - id: dr_jones
+    name: Dr. Jones
+    role: Senior Clinical Pharmacist
+    governance_role: governance_reviewer
+    specialties: []
+    email: dr.jones@example.org
+  - id: pharmacy_lead
+    name: Pharmacy Lead
+    role: P&T Committee Chair
+    governance_role: governance_reviewer
+    specialties: []
+    email: pharmacy.lead@example.org

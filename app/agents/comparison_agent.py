@@ -230,6 +230,51 @@ class ComparisonAgent:
                     governing.change_category = change.change_category
         return findings
 
+    CATEGORY_TO_DIFFERENCE = {
+        "dose_change": "dosage_change",
+        "threshold_change": "threshold_change",
+        "contraindication_added": "contraindication",
+        "safety_warning": "safety_warning",
+        "withdrawn": "intervention_change",
+        "new_recommendation": "intervention_change",
+        "revised_recommendation": "intervention_change",
+    }
+
+    def record_protocol_gap(self, change_record_id: str, position: Any, item: Any, change_category: str) -> str:
+        """Record the deterministic protocol comparison for a query as a GapRecord (idempotent)."""
+        with self.session_factory() as session:
+            change = session.get(ChangeRecord, change_record_id)
+            if change is None:
+                raise ValueError(f"ChangeRecord '{change_record_id}' not found.")
+            existing = session.query(GapRecord).filter_by(change_record_id=change.id).first()
+            if existing is not None:
+                return existing.id
+            for target in (ChangeStatus.COMPARISON_PENDING.value, ChangeStatus.GAP_CONFIRMED.value):
+                validate_transition(change.status, target, CHANGE_TRANSITIONS, "ChangeRecord")
+                change.status = target
+            diffs = "; ".join(f"{d.kind}: protocol {d.before} vs guidance {d.after}" for d in item.differences)
+            gap = GapRecord(
+                change_record_id=change.id,
+                candidate_protocol_section_ids=[f"{position.protocol_id}__{position.protocol_version}__{item.section_id}"],
+                similarity=None,
+                comparison_result=ComparisonResult.GAP.value,
+                comparison_confidence=1.0,
+                difference_type=self.CATEGORY_TO_DIFFERENCE.get(change_category, "intervention_change"),
+                matched_protocol_id=position.protocol_id,
+                matched_protocol_version=position.protocol_version,
+                matched_section_id=item.section_id,
+                matched_section_heading=item.section_heading,
+                exact_protocol_text=item.section_text,
+                specific_difference=item.reason + (f" ({diffs})" if diffs else ""),
+                comparison_rationale="Deterministic comparison of verbatim guidance and protocol statements (clinician query).",
+                is_match=True,
+                status=GapStatus.MATCHED.value,
+                schema_version="1.0",
+            )
+            session.add(gap)
+            session.commit()
+            return gap.id
+
     def _plan_components(self, query, latest_refs, change_refs, taxonomy) -> List[PlanComponent]:
         """Assess each part of the plan separately against current guideline/notice recommendations.
 

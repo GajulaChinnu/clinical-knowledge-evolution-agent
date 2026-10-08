@@ -870,6 +870,101 @@ class GovernanceAgent:
             return log_entry
 
     # ==========================================================================
+    # SPECIALIST ROUTING (who reviews; never what is decided)
+    # ==========================================================================
+
+    HIGH_IMPACT_TIERS = ("Critical", "High")
+
+    def route_brief(self, change_brief_id: str, actor: str = "pipeline_orchestrator") -> Dict[str, Any]:
+        """Route a draft ChangeBrief to the accountable reviewer.
+
+        Critical/High: a registered specialist of the primary department (the protocol's department,
+        else the first affected department); specialists of other affected departments receive a
+        consultation notice. No department: a governance chair. Standard/Low: the governance pool.
+        If nobody is eligible the brief stays unassigned, the governance team is notified and the
+        routing failure is audited. Nobody is ever auto-assigned outside these rules, and routing
+        never records a decision.
+        """
+        from app.services.taxonomy import TaxonomyError, get_taxonomy
+
+        with self.session_factory() as session:
+            brief = session.get(ChangeBrief, change_brief_id)
+            if brief is None:
+                raise RecordNotFoundError(f"ChangeBrief not found with ID: {change_brief_id}")
+            existing = session.query(ReviewAssignment).filter_by(change_brief_id=brief.id).all()
+            if existing:
+                return {"status": "already_assigned", "reviewer_id": existing[0].reviewer_id, "consults": []}
+            impact = brief.impact_record
+            tier = impact.tier if impact else None
+            departments = list((impact.affected_departments or []) if impact else [])
+            protocol_id = ((brief.structured_payload or {}).get("current_protocol") or {}).get("protocol_id")
+
+        primary = None
+        if protocol_id:
+            try:
+                taxonomy = get_taxonomy()
+                legacy = taxonomy.legacy_metadata_for(protocol_id)
+                if legacy is not None:
+                    primary = legacy.department
+                else:
+                    from app.services.protocol_repository import load_protocols
+
+                    primary = next((p.department for p in load_protocols(self.config.protocol_dir, taxonomy)
+                                    if p.protocol_id == protocol_id), None)
+            except TaxonomyError:
+                primary = None
+        primary = primary or (departments[0] if departments else None)
+
+        high = tier in self.HIGH_IMPACT_TIERS
+        if high and primary:
+            candidates = self.auth_service.specialists_for(primary)
+            route_basis = f"{tier} impact: specialist for {primary}"
+        elif high:
+            candidates = self.auth_service.chairs()
+            route_basis = f"{tier} impact with no department: governance chair"
+        else:
+            candidates = self.auth_service.governance_pool()
+            route_basis = f"{tier or 'Unscored'} impact: governance pool"
+
+        if not candidates:
+            self._record_audit(
+                entity_id=change_brief_id, entity_type="ChangeBrief", previous_status=None,
+                new_status="unroutable", actor=actor,
+                reason=f"No eligible reviewer ({route_basis}); brief left unassigned.",
+                audit_metadata={"action": "routing_failed", "tier": tier, "primary_department": primary},
+            )
+            self._record_notification(
+                related_entity_id=change_brief_id, related_entity_type="ChangeBrief",
+                notification_type="unroutable_brief", recipient="governance_team",
+                payload={"tier": tier, "primary_department": primary, "basis": route_basis},
+            )
+            return {"status": "unroutable", "reviewer_id": None, "consults": [], "basis": route_basis}
+
+        reviewer = candidates[0]
+        assignment = self.assign_reviewer(change_brief_id=change_brief_id, reviewer_id=reviewer.reviewer_id,
+                                          reviewer_role=reviewer.role, actor=actor)
+        consults = []
+        if high:
+            for dept in departments:
+                if dept == primary:
+                    continue
+                for specialist in self.auth_service.specialists_for(dept)[:1]:
+                    self._record_notification(
+                        related_entity_id=change_brief_id, related_entity_type="ChangeBrief",
+                        notification_type="specialist_consultation", recipient=specialist.reviewer_id,
+                        payload={"department": dept, "accountable_reviewer": reviewer.reviewer_id, "tier": tier},
+                    )
+                    consults.append(specialist.reviewer_id)
+        self._record_audit(
+            entity_id=change_brief_id, entity_type="ChangeBrief", previous_status=None,
+            new_status="routed", actor=actor, reason=route_basis,
+            audit_metadata={"action": "specialist_routing", "reviewer_id": reviewer.reviewer_id,
+                            "consults": consults, "tier": tier, "primary_department": primary},
+        )
+        return {"status": "assigned", "reviewer_id": reviewer.reviewer_id, "assignment_id": assignment.id,
+                "consults": consults, "basis": route_basis}
+
+    # ==========================================================================
     # CLINICIAN QUERY MODE: protocol-update review status for the clinician
     # ==========================================================================
 

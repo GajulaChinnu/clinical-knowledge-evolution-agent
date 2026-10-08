@@ -137,6 +137,18 @@ class ClinicianQueryWorkflow:
         ))
 
         # 6. Governance ---------------------------------------------------------------
+        created = []
+        for position in answer.protocol_positions:
+            if position.status != "out_of_date":
+                continue
+            try:
+                brief_id = self._ensure_protocol_update_brief(query, answer, position, actor)
+                if brief_id:
+                    created.append(brief_id)
+            except Exception as e:  # brief creation failure falls back to a governance flag; it is shown
+                logger.exception("Protocol update brief could not be created for %s", position.protocol_id)
+                record(StepRecord(agent="Governance", status="failed",
+                                  summary=f"Brief creation failed for {position.protocol_id}: {type(e).__name__}: {e}"))
         governance = self.governance.governance_for_query(query, answer, actor=actor)
         answer.governance = governance
         record(StepRecord(
@@ -150,6 +162,31 @@ class ClinicianQueryWorkflow:
         return answer
 
     # ------------------------------------------------------------------------------------
+    def _ensure_protocol_update_brief(self, query: ClinicianQuery, answer: ClinicianAnswer, position, actor: str) -> Optional[str]:
+        """Create (or reuse) the change brief for an out-of-date protocol and route it to a specialist.
+
+        Each agent performs its own step: Extraction records the verified statement, Comparison
+        records the protocol gap, Impact scores it, Briefing writes the brief, Governance routes it.
+        """
+        if self.governance._find_brief_for_protocol(position.protocol_id, list(query.treatment_ids)) is not None:
+            return None
+        item = next((i for i in position.items if i.status == "out_of_date" and i.latest_citation and i.section_text), None)
+        if item is None:
+            return None  # e.g. only a missing contraindication: flagged to governance instead
+        category = next((v.change_category for v in answer.what_changed
+                         if v.latest and v.latest.statement_id == item.latest_citation.statement_id), None)
+        if item.latest_citation.excerpt and "withdrawn" in item.latest_citation.excerpt.lower():
+            category = "withdrawn"
+        category = category or "revised_recommendation"
+        change_id = self.extraction.record_change_from_statement(item.latest_citation.statement_id, category)
+        gap_id = self.comparison.record_protocol_gap(change_id, position, item, category)
+        departments = sorted({d for d in [query.department] + [d for f in answer.findings for d in f.departments]})
+        breadth = "one_specialty" if len(departments) <= 1 else "two_or_three_specialties" if len(departments) <= 3 else "four_or_more_specialties"
+        impact = self.impact.process_gap_record(gap_id, breadth_input=breadth)
+        brief = self.briefing.process_impact_record(impact.id)
+        self.governance.route_brief(brief.id, actor=actor)
+        return brief.id
+
     def _source_checked(self, check: SourceCheckResult) -> SourceChecked:
         entry = self.watchlist.get(check.entry_id)
         return SourceChecked(

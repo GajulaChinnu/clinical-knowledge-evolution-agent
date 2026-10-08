@@ -164,6 +164,13 @@ class StructuredBriefPayload(BaseModel):
     proposed_actions: List[ProposedActionItem] = Field(..., min_length=3, max_length=3)
     source_excerpt: SourceExcerptSectionPayload
 
+    # Review aids (background and query mode); never replace the seven sections above.
+    summary: Optional[str] = Field(default=None, description="Concise summary of the change (at most 5 lines)")
+    change_category: Optional[str] = Field(default=None)
+    priority_score: Optional[float] = Field(default=None)
+    affected_departments: List[str] = Field(default_factory=list)
+    affected_pathways: List[str] = Field(default_factory=list)
+
 
 # ==============================================================================
 # COMPLETENESS VALIDATION

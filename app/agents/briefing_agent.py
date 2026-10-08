@@ -316,6 +316,11 @@ class BriefingAgent:
                 affected_workflows=workflow_payload,
                 proposed_actions=proposed_actions,
                 source_excerpt=source_excerpt,
+                summary=self._concise_summary(doc, change, gap, impact, current_protocol, resolved_difference),
+                change_category=change.change_category,
+                priority_score=impact.priority_score,
+                affected_departments=list(impact.affected_departments or []),
+                affected_pathways=list(impact.affected_pathways or []),
             )
 
             # 11. Validate brief completeness
@@ -348,6 +353,27 @@ class BriefingAgent:
             session.refresh(brief_entity)
             session.expunge(brief_entity)
             return brief_entity
+
+    @staticmethod
+    def _concise_summary(doc, change, gap, impact, current_protocol, difference) -> str:
+        """At most five lines: what changed, where, what our protocol says, why it matters."""
+        meta = doc.doc_metadata or {}
+        source = meta.get("title") or doc.source_identifier
+        version = meta.get("publisher_version") or doc.source_version
+        lines = [
+            f"What changed: {change.verbatim_text}",
+            f"Source: {source} version {version}" + (f" ({meta['published_date']})" if meta.get("published_date") else ""),
+        ]
+        if current_protocol.is_match:
+            lines.append(f"Our protocol ({current_protocol.protocol_id} {current_protocol.protocol_version}): "
+                         f"{current_protocol.exact_protocol_text}")
+        else:
+            lines.append("Our protocol: no matching section.")
+        lines.append(f"Difference: {difference}")
+        if impact.tier:
+            lines.append(f"Why it matters: {impact.tier} impact ({impact.total_score}/15)"
+                         + (f", {change.change_category.replace('_', ' ')}" if change.change_category else "") + ".")
+        return "\n".join(lines[:5])
 
     def build_clinician_answer(self, query, outcome, ranked_findings, sources_checked, steps, taxonomy):
         """Clinician query mode: deterministic verdict and answer brief from verified comparison results."""

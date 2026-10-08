@@ -47,6 +47,48 @@ class ExtractionAgent:
         service = GuidanceIndexService(self.session_factory)
         return [service.index_document(doc_id) for doc_id in document_ids]
 
+    def record_change_from_statement(self, statement_id: str, change_category: str) -> str:
+        """Record a verified guidance statement as a ChangeRecord (query mode, deterministic, idempotent).
+
+        The statement is verbatim from the stored source, so provenance needs no LLM verification.
+        """
+        from app.models.entities import GuidanceStatement
+        from app.services.taxonomy import get_taxonomy
+
+        with self.session_factory() as session:
+            stmt = session.get(GuidanceStatement, statement_id)
+            if stmt is None:
+                raise ValueError(f"GuidanceStatement '{statement_id}' not found.")
+            existing = (session.query(ChangeRecord)
+                        .filter_by(ingested_document_id=stmt.ingested_document_id, verbatim_text=stmt.verbatim_text)
+                        .first())
+            if existing is not None:
+                return existing.id
+            taxonomy = get_taxonomy()
+            names = [taxonomy.treatment_name(t) for t in (stmt.treatments or [])]
+            change = ChangeRecord(
+                ingested_document_id=stmt.ingested_document_id,
+                verbatim_text=stmt.verbatim_text,
+                recommendation_type=stmt.statement_type,
+                target_population="As stated in the source excerpt",
+                intervention=", ".join(names) or "As stated in the source excerpt",
+                evidence_grade=f"Grade {stmt.evidence_level}" if stmt.evidence_level else None,
+                confidence=1.0,
+                page=1,
+                section=stmt.section_heading,
+                source_excerpt=stmt.verbatim_text,
+                extraction_model_version="deterministic-statement-index",
+                extraction_prompt_version="n/a",
+                status=ChangeStatus.EXTRACTED.value,
+                schema_version="1.0",
+                change_category=change_category,
+                departments=list(stmt.departments or []),
+                treatments=list(stmt.treatments or []),
+            )
+            session.add(change)
+            session.commit()
+            return change.id
+
     def _classify_recommendation(self, session: Session, doc: IngestedDocument, verbatim: str) -> dict:
         """Department, treatment and change-category classification (taxonomy + statement index)."""
         from app.models.entities import GuidanceChange, GuidanceStatement

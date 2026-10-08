@@ -74,7 +74,7 @@ class ClinicalKnowledgePipeline:
         impact_agent: Optional[ImpactAgent] = None,
         briefing_agent: Optional[BriefingAgent] = None,
         governance_agent: Optional[GovernanceAgent] = None,
-        default_reviewer_id: str = "dr_smith",
+        default_reviewer_id: Optional[str] = None,
         default_reviewer_role: str = "Clinical Governance Lead",
         default_breadth_input: str = "one_specialty",
         default_g3_urgency_input: str = "time_sensitive_treatment",
@@ -590,8 +590,8 @@ class ClinicalKnowledgePipeline:
             # 9. Governance Assignment Stage
             assignments = session.query(ReviewAssignment).filter_by(change_brief_id=brief.id).all()
             if not assignments:
-                # Assign default reviewer if configured
                 if self.default_reviewer_id:
+                    # Explicit fixed-reviewer override (demos/tests); otherwise specialist routing.
                     assignment = self.governance_agent.assign_reviewer(
                         change_brief_id=brief.id,
                         reviewer_id=self.default_reviewer_id,
@@ -599,6 +599,10 @@ class ClinicalKnowledgePipeline:
                         actor="pipeline_orchestrator",
                     )
                     res.artifacts.review_assignment_ids.append(assignment.id)
+                else:
+                    routing = self.governance_agent.route_brief(brief.id, actor="pipeline_orchestrator")
+                    if routing.get("assignment_id"):
+                        res.artifacts.review_assignment_ids.append(routing["assignment_id"])
             else:
                 res.artifacts.review_assignment_ids.extend([a.id for a in assignments])
 
@@ -681,7 +685,9 @@ class ClinicalKnowledgePipeline:
                         reviewer_role=self.default_reviewer_role,
                         actor=actor or "pipeline_orchestrator",
                     )
-                    session.refresh(brief)
+                else:
+                    self.governance_agent.route_brief(brief.id, actor=actor or "pipeline_orchestrator")
+                session.refresh(brief)
 
             # Check G4 Gate
             if brief.status in (BriefStatus.ASSIGNED.value, BriefStatus.IN_REVIEW.value):
