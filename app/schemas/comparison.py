@@ -1,15 +1,29 @@
 """Pydantic schemas for LLM-based protocol comparison results."""
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.gaps import ComparisonResult, DifferenceType
 
 
+def _enforce_strict_json_schema(schema: Dict[str, Any]) -> None:
+    """Enforce Groq strict structured outputs JSON schema requirements."""
+    schema["additionalProperties"] = False
+    if "properties" in schema:
+        schema["required"] = list(schema["properties"].keys())
+        for prop_schema in schema["properties"].values():
+            if isinstance(prop_schema, dict) and "default" in prop_schema:
+                del prop_schema["default"]
+
+
 class ComparisonResponse(BaseModel):
     """Structured clinical recommendation vs protocol section comparison output."""
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        json_schema_extra=_enforce_strict_json_schema,
+    )
 
     comparison_result: ComparisonResult = Field(
         ...,

@@ -111,6 +111,50 @@ class MonitoringAgent:
 
         return result
 
+    def ingest_known_file(
+        self,
+        file_path: Path,
+        source_identifier: str,
+        doc_metadata: Optional[Dict[str, Any]] = None,
+        session: Optional[Session] = None,
+    ) -> ScanResult:
+        """Explicitly ingest a file with a known, stable source identifier.
+
+        Args:
+            file_path: Path to the target PDF file.
+            source_identifier: Stable canonical identifier for the source (e.g. URL).
+            doc_metadata: Optional metadata to attach to the IngestedDocument.
+            session: Optional SQLAlchemy session. If not provided, a new one is created.
+
+        Returns:
+            ScanResult detailing the outcome.
+        """
+        result = ScanResult(discovered=1)
+        owns_session = False
+        if session is None:
+            session = self.session_factory()
+            owns_session = True
+
+        try:
+            self._process_file_with_id(
+                file_path=file_path,
+                source_identifier=source_identifier,
+                doc_metadata=doc_metadata,
+                session=session,
+                result=result,
+            )
+            if owns_session:
+                session.commit()
+        except Exception:
+            if owns_session:
+                session.rollback()
+            raise
+        finally:
+            if owns_session:
+                session.close()
+
+        return result
+
     def _process_file(
         self,
         file_path: Path,
@@ -120,6 +164,23 @@ class MonitoringAgent:
         """Process a single PDF file with isolated error handling."""
         logger.info("File discovered: %s", file_path.name)
         source_identifier = file_path.stem
+        self._process_file_with_id(
+            file_path=file_path,
+            source_identifier=source_identifier,
+            doc_metadata=None,
+            session=session,
+            result=result,
+        )
+
+    def _process_file_with_id(
+        self,
+        file_path: Path,
+        source_identifier: str,
+        doc_metadata: Optional[Dict[str, Any]],
+        session: Session,
+        result: ScanResult,
+    ) -> None:
+        """Core logic to process a file given a specific source identifier."""
 
         try:
             # 1. Compute SHA-256 hash of file contents
@@ -147,11 +208,19 @@ class MonitoringAgent:
                 result.skipped += 1
                 return
 
-            # 4. Determine document version
+            # 4. Determine document version and previous version linkage
+            previous_source_version_id = None
+            previous_sha256_hash = None
+            change_status = "first_seen"
+
             if not existing_docs:
                 next_version = "1.0"
             else:
                 next_version = self._get_next_version([d.document_version for d in existing_docs])
+                latest_existing = existing_docs[0]
+                previous_source_version_id = latest_existing.id
+                previous_sha256_hash = latest_existing.sha256_hash
+                change_status = "changed"
 
             # 5. Validate PDF readability via pdfplumber
             with pdfplumber.open(file_path) as pdf:
@@ -163,11 +232,13 @@ class MonitoringAgent:
                     str(k): str(v) for k, v in raw_meta.items() if v is not None
                 }
 
-            doc_metadata = {
+            combined_metadata = {
                 "page_count": page_count,
                 "file_size_bytes": file_path.stat().st_size,
                 "pdf_metadata": clean_meta,
             }
+            if doc_metadata:
+                combined_metadata.update(doc_metadata)
 
             # 6. Instantiate and transition record
             doc = IngestedDocument(
@@ -176,10 +247,13 @@ class MonitoringAgent:
                 sha256_hash=file_hash,
                 document_version=next_version,
                 source_version=next_version,
+                previous_source_version_id=previous_source_version_id,
+                previous_sha256_hash=previous_sha256_hash,
+                change_status=change_status,
                 parser_version=self.parser_version,
                 pipeline_version=self.pipeline_version,
                 status=DocumentStatus.DISCOVERED.value,
-                doc_metadata=doc_metadata,
+                doc_metadata=combined_metadata,
             )
 
             # Reusable transition primitive: discovered -> parsed

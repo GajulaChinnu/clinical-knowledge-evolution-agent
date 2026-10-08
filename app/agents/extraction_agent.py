@@ -17,8 +17,10 @@ from app.services.pdf_parser import (
     detect_document_sections,
     extract_page_texts,
     filter_candidate_sections,
+    DocumentSection,
 )
 from app.services.source_verifier import verify_recommendation_provenance
+from app.services.source_version_diff import SourceVersionDiffService, ChangedSection
 
 logger = logging.getLogger("ckea.extraction")
 
@@ -73,14 +75,53 @@ class ExtractionAgent:
             page_texts = extract_page_texts(doc.source_path)
             sections = detect_document_sections(page_texts)
 
-            # 3. Filter candidate sections (token reduction heuristic)
-            candidate_sections = filter_candidate_sections(sections)
-            logger.info(
-                "Document %s: %d total section(s), %d candidate section(s) selected for extraction.",
-                doc.id,
-                len(sections),
-                len(candidate_sections),
-            )
+            # 3. Handle version differencing if previous version exists
+            if doc.previous_source_version_id:
+                old_doc = session.get(IngestedDocument, doc.previous_source_version_id)
+                if old_doc:
+                    logger.info("Previous version found (%s), performing diff.", old_doc.id)
+                    old_page_texts = extract_page_texts(old_doc.source_path)
+                    old_sections = detect_document_sections(old_page_texts)
+                    
+                    diff_service = SourceVersionDiffService()
+                    changes = diff_service.diff_sections(old_sections, sections)
+                    
+                    sec_map = {s.section_heading: s for s in sections}
+                    diffed_sections = []
+                    for c in changes:
+                        if c.change_type in ("added", "modified"):
+                            original_sec = sec_map.get(c.heading)
+                            page_num = original_sec.page_number if original_sec else 1
+                            diffed_sections.append(DocumentSection(
+                                page_number=page_num,
+                                section_heading=c.heading,
+                                text=c.new_text,
+                            ))
+                    
+                    candidate_sections = filter_candidate_sections(diffed_sections)
+                    logger.info(
+                        "Document %s: %d total section(s), %d changed section(s), %d candidate section(s) selected for extraction.",
+                        doc.id,
+                        len(sections),
+                        len(diffed_sections),
+                        len(candidate_sections),
+                    )
+                else:
+                    candidate_sections = filter_candidate_sections(sections)
+                    logger.info(
+                        "Document %s: %d total section(s), %d candidate section(s) selected for extraction.",
+                        doc.id,
+                        len(sections),
+                        len(candidate_sections),
+                    )
+            else:
+                candidate_sections = filter_candidate_sections(sections)
+                logger.info(
+                    "Document %s: %d total section(s), %d candidate section(s) selected for extraction.",
+                    doc.id,
+                    len(sections),
+                    len(candidate_sections),
+                )
 
             created_records: List[ChangeRecord] = []
 
@@ -155,7 +196,7 @@ class ExtractionAgent:
                     created_records.append(change)
 
             # 9. Update document lifecycle state
-            if any(c.status == ChangeStatus.HELD_FOR_G1.value for c in created_records):
+            if any(c.status == ChangeStatus.HELD_FOR_G1.value for c in created_records) or not created_records:
                 if doc.status == DocumentStatus.PROCESSING.value:
                     validate_transition(
                         doc.status,

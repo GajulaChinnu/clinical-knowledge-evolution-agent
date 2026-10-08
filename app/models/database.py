@@ -81,6 +81,21 @@ def get_session_factory(engine: Optional[Engine] = None) -> sessionmaker[Session
         expire_on_commit=False,
     )
 
+def apply_migrations(engine: Engine) -> None:
+    """Apply safe schema migrations for existing databases."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if not inspector.has_table("ingested_documents"):
+        return
+    columns = [col["name"] for col in inspector.get_columns("ingested_documents")]
+    
+    with engine.begin() as conn:
+        if "previous_source_version_id" not in columns:
+            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_source_version_id VARCHAR(36)"))
+        if "previous_sha256_hash" not in columns:
+            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_sha256_hash VARCHAR(64)"))
+        if "change_status" not in columns:
+            conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN change_status VARCHAR(32) DEFAULT 'first_seen'"))
 
 def init_db(engine: Optional[Engine] = None, db_url: Optional[str] = None) -> Engine:
     """Explicitly initialize the database schema by creating all registered tables.
@@ -99,8 +114,8 @@ def init_db(engine: Optional[Engine] = None, db_url: Optional[str] = None) -> En
         engine = get_engine(db_url=db_url)
 
     Base.metadata.create_all(bind=engine)
+    apply_migrations(engine)
     return engine
-
 
 @contextmanager
 def session_scope(

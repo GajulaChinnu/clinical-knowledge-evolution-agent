@@ -586,6 +586,12 @@ def test_shared_llm_client_extract_recommendations_and_observability():
     assert kwargs["response_format"]["json_schema"]["strict"] is True
     assert kwargs["temperature"] == 0.0
 
+    schema = kwargs["response_format"]["json_schema"]["schema"]
+    assert schema["additionalProperties"] is False
+    assert "$defs" in schema
+    assert "ExtractedRecommendation" in schema["$defs"]
+    assert schema["$defs"]["ExtractedRecommendation"]["additionalProperties"] is False
+
     # Verify token usage observability
     assert client.request_count == 1
     assert client.last_usage is not None
@@ -594,4 +600,125 @@ def test_shared_llm_client_extract_recommendations_and_observability():
     assert client.last_usage["completion_tokens"] == 80
     assert client.last_usage["total_tokens"] == 230
     assert client.last_usage["latency_ms"] >= 0.0
+
+
+def test_extraction_response_schema_groq_strict_compliance():
+    """Verify ExtractionResponse JSON schema conforms to Groq strict structured outputs rules:
+    1. Root object has additionalProperties: False
+    2. Every object under $defs has additionalProperties: False
+    3. Every object has a 'required' list exactly covering all of its properties
+    4. Conceptual optional fields (evidence_grade) are represented as nullable and required
+    5. No default values remain inside property definitions that might bypass required
+    """
+    schema = ExtractionResponse.model_json_schema()
+
+    # 1. Root object verification
+    assert schema.get("type") == "object"
+    assert schema.get("additionalProperties") is False
+    assert "properties" in schema
+    assert "recommendations" in schema["properties"]
+    assert "required" in schema
+    assert "recommendations" in schema["required"]
+    assert set(schema["required"]) == set(schema["properties"].keys())
+
+    # 2. $defs verification
+    assert "$defs" in schema
+    assert "ExtractedRecommendation" in schema["$defs"]
+
+    rec_schema = schema["$defs"]["ExtractedRecommendation"]
+    assert rec_schema.get("type") == "object"
+    assert rec_schema.get("additionalProperties") is False
+
+    # 3. Every property in ExtractedRecommendation must be in 'required'
+    rec_props = rec_schema.get("properties", {})
+    rec_required = rec_schema.get("required", [])
+    expected_props = {
+        "verbatim_text",
+        "recommendation_type",
+        "target_population",
+        "intervention",
+        "evidence_grade",
+        "page",
+        "section",
+        "source_excerpt",
+        "confidence",
+    }
+    assert set(rec_props.keys()) == expected_props
+    assert set(rec_required) == expected_props
+
+    # 4. evidence_grade is nullable (anyOf string or null) and required
+    ev_schema = rec_props["evidence_grade"]
+    assert "anyOf" in ev_schema
+    types = [t.get("type") for t in ev_schema["anyOf"] if isinstance(t, dict)]
+    assert "string" in types
+    assert "null" in types
+    assert "default" not in ev_schema
+
+    # 5. Check all nested objects recursively if any
+    for def_name, def_obj in schema["$defs"].items():
+        if def_obj.get("type") == "object":
+            assert def_obj.get("additionalProperties") is False
+            assert "required" in def_obj
+            assert set(def_obj["required"]) == set(def_obj.get("properties", {}).keys())
+
+
+def test_extracted_recommendation_forbids_extra_fields():
+    """Verify ExtractedRecommendation rejects arbitrary unknown fields due to extra='forbid'."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        ExtractedRecommendation(
+            verbatim_text="Patients should take metformin.",
+            recommendation_type="treatment",
+            target_population="Adults",
+            intervention="Metformin",
+            evidence_grade="Grade A",
+            page=1,
+            section="Section 1",
+            source_excerpt="Excerpt",
+            confidence=0.9,
+            unexpected_field="disallowed",
+        )
+
+
+def test_extraction_nullable_evidence_grade_behavior():
+    """Verify ExtractedRecommendation semantics allow evidence_grade=None or explicit grade."""
+    rec_none = ExtractedRecommendation(
+        verbatim_text="Patients should exercise.",
+        recommendation_type="lifestyle",
+        target_population="Adults",
+        intervention="Exercise",
+        evidence_grade=None,
+        page=2,
+        section="Lifestyle",
+        source_excerpt="Patients should exercise daily.",
+        confidence=0.85,
+    )
+    assert rec_none.evidence_grade is None
+
+    rec_omitted = ExtractedRecommendation(
+        verbatim_text="Patients should exercise.",
+        recommendation_type="lifestyle",
+        target_population="Adults",
+        intervention="Exercise",
+        page=2,
+        section="Lifestyle",
+        source_excerpt="Patients should exercise daily.",
+        confidence=0.85,
+    )
+    assert rec_omitted.evidence_grade is None
+
+    rec_grade = ExtractedRecommendation(
+        verbatim_text="Patients should exercise.",
+        recommendation_type="lifestyle",
+        target_population="Adults",
+        intervention="Exercise",
+        evidence_grade="Grade B",
+        page=2,
+        section="Lifestyle",
+        source_excerpt="Patients should exercise daily.",
+        confidence=0.85,
+    )
+    assert rec_grade.evidence_grade == "Grade B"
+
 

@@ -364,10 +364,32 @@ class ClinicalKnowledgePipeline:
                 return res
 
             if not changes:
-                # Document extraction complete, but no recommendations found
-                res.status = PipelineStatus.COMPLETED
+                # Document extraction produced zero actionable recommendations -> Hold at G1
+                self._record_audit(
+                    session=session,
+                    entity_id=doc.id,
+                    entity_type="IngestedDocument",
+                    previous_status=doc.status,
+                    new_status=DocumentStatus.HELD.value,
+                    action="stage_held",
+                    stage=PipelineStage.EXTRACTION.value,
+                    reason="No actionable clinical recommendation could be confidently extracted from this source.",
+                )
+                if doc.status == DocumentStatus.PROCESSING.value:
+                    validate_transition(
+                        doc.status,
+                        DocumentStatus.HELD.value,
+                        DOCUMENT_TRANSITIONS,
+                        "IngestedDocument",
+                    )
+                    doc.status = DocumentStatus.HELD.value
+                    session.commit()
+
+                res.status = PipelineStatus.HELD
                 res.current_stage = PipelineStage.EXTRACTION
-                res.reason = "Document extraction completed; zero clinical recommendations found."
+                res.blocked_stage = PipelineStage.EXTRACTION
+                res.held_gate = HumanGate.G1
+                res.reason = "No actionable clinical recommendation could be confidently extracted from this source."
                 return res
 
         # Process each ChangeRecord downstream (failure isolation per change)

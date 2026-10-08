@@ -1,13 +1,32 @@
 """Pydantic schemas for LLM-based clinical recommendation extraction."""
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _enforce_strict_json_schema(schema: Dict[str, Any]) -> None:
+    """Enforce Groq strict structured outputs JSON schema requirements.
+
+    Groq requires:
+    1. 'additionalProperties: false' on every object (root and all $defs).
+    2. All properties listed in the 'required' array.
+    """
+    schema["additionalProperties"] = False
+    if "properties" in schema:
+        schema["required"] = list(schema["properties"].keys())
+        for prop_schema in schema["properties"].values():
+            if isinstance(prop_schema, dict) and "default" in prop_schema:
+                del prop_schema["default"]
 
 
 class ExtractedRecommendation(BaseModel):
     """Structured clinical recommendation extracted by Groq from candidate text."""
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        json_schema_extra=_enforce_strict_json_schema,
+    )
 
     verbatim_text: str = Field(
         ...,
@@ -67,7 +86,11 @@ class ExtractedRecommendation(BaseModel):
 class ExtractionResponse(BaseModel):
     """Top-level structured container for recommendations extracted from a section."""
 
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        json_schema_extra=_enforce_strict_json_schema,
+    )
 
     recommendations: List[ExtractedRecommendation] = Field(
         default_factory=list,
