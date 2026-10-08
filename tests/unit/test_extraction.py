@@ -722,3 +722,36 @@ def test_extraction_nullable_evidence_grade_behavior():
     assert rec_grade.evidence_grade == "Grade B"
 
 
+
+
+def test_invalid_model_output_holds_document_for_g1(extraction_env):
+    """Unparseable/schema-invalid extraction output is a G1 review item, not a document failure."""
+    from app.services.llm_client import LLMOutputError
+
+    tmp_path = extraction_env["tmp_path"]
+    session_factory = extraction_env["session_factory"]
+    pdf_path = tmp_path / "bad_output.pdf"
+    pdf_path.write_bytes(make_pdf_bytes([
+        "1. Pharmacological Management",
+        "Adults with type 2 diabetes should be started on metformin immediately upon diagnosis.",
+    ]))
+    with session_factory() as session:
+        doc = IngestedDocument(
+            source_identifier="BAD-OUTPUT", source_path=str(pdf_path), sha256_hash="f" * 64,
+            source_version="1.0", pipeline_version="1.0", status=DocumentStatus.PARSED.value,
+        )
+        session.add(doc)
+        session.commit()
+        doc_id = doc.id
+
+    mock_llm = MagicMock(spec=SharedLLMClient)
+    mock_llm.extract_recommendations.side_effect = LLMOutputError("Model extraction output failed schema validation")
+    changes = ExtractionAgent(session_factory=session_factory, llm_client=mock_llm, config=extraction_env["config"]).process_document(doc_id)
+
+    assert changes == []
+    with session_factory() as session:
+        doc = session.get(IngestedDocument, doc_id)
+        assert doc.status == DocumentStatus.HELD.value
+        issues = doc.doc_metadata["extraction_issues"]
+        assert issues[0]["section"] == "1. Pharmacological Management"
+        assert "schema validation" in issues[0]["reason"]

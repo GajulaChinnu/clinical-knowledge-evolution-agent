@@ -175,6 +175,13 @@ class GapRecord(Base):
     difference_type: Optional[str] = Column(String(64), nullable=True)
     matched_protocol_id: Optional[str] = Column(String(128), nullable=True)
     matched_protocol_version: Optional[str] = Column(String(64), nullable=True)
+    # Verified comparison evidence (persisted so briefs never reconstruct or invent it)
+    matched_section_id: Optional[str] = Column(String(128), nullable=True)
+    matched_section_heading: Optional[str] = Column(String(512), nullable=True)
+    exact_protocol_text: Optional[str] = Column(Text, nullable=True)  # only when verified verbatim
+    specific_difference: Optional[str] = Column(Text, nullable=True)
+    comparison_rationale: Optional[str] = Column(Text, nullable=True)
+    review_reason: Optional[str] = Column(Text, nullable=True)  # why G2/G3 review is required
     is_match: bool = Column(Boolean, nullable=False, default=True)
     reviewer_resolution: Optional[str] = Column(Text, nullable=True)
     status: str = Column(String(32), nullable=False, default="pending")

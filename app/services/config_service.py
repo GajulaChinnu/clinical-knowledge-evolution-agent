@@ -30,6 +30,8 @@ class AppConfig(BaseModel):
     groq_api_key: Optional[str] = Field(default=None, repr=False)
     groq_model: str = Field(default="openai/gpt-oss-20b")
     groq_base_url: str = Field(default="https://api.groq.com/openai/v1")
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    llm_timeout_seconds: float = Field(default=60.0, gt=0)
 
     # Web Retrieval (Jina Reader + direct PDF download)
     jina_api_key: Optional[str] = Field(default=None, repr=False)
@@ -119,6 +121,8 @@ _ENV_MAPPINGS: Dict[str, Tuple[str, Callable[[str], Any]]] = {
     "GROQ_API_KEY": ("groq_api_key", _optional_secret),
     "GROQ_MODEL": ("groq_model", str),
     "GROQ_BASE_URL": ("groq_base_url", str),
+    "LLM_MAX_RETRIES": ("llm_max_retries", int),
+    "LLM_TIMEOUT_SECONDS": ("llm_timeout_seconds", float),
     "JINA_API_KEY": ("jina_api_key", _optional_secret),
     "JINA_READER_BASE_URL": ("jina_reader_base_url", str),
     "JINA_TIMEOUT_SECONDS": ("jina_timeout_seconds", float),

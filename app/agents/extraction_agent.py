@@ -12,7 +12,7 @@ from app.schemas.documents import DocumentStatus
 from app.schemas.extraction import ExtractionResponse
 from app.schemas.transitions import DOCUMENT_TRANSITIONS, validate_transition
 from app.services.config_service import AppConfig, load_config
-from app.services.llm_client import SharedLLMClient
+from app.services.llm_client import LLMOutputError, SharedLLMClient
 from app.services.pdf_parser import filter_candidate_sections, DocumentSection
 from app.services.source_documents import load_source_sections
 from app.services.source_verifier import verify_recommendation_provenance
@@ -130,6 +130,7 @@ class ExtractionAgent:
                 )
 
             created_records: List[ChangeRecord] = []
+            extraction_issues: List[dict] = []
 
             # 4. Process each candidate section via Groq
             for section in candidate_sections:
@@ -140,13 +141,27 @@ class ExtractionAgent:
                     doc.id,
                 )
 
-                # Send ONLY the candidate section text to Groq
-                extraction_resp: ExtractionResponse = self.llm_client.extract_recommendations(
-                    section_heading=section.section_heading,
-                    section_text=section.text,
-                    page_number=section.page_number,
-                    document_identifier=doc.source_identifier,
-                )
+                # Send ONLY the candidate section text to Groq. Invalid model output for a
+                # section is a G1 matter (human extraction review), not a document failure;
+                # provider outages (LLMTransportError) still propagate as failures.
+                try:
+                    extraction_resp: ExtractionResponse = self.llm_client.extract_recommendations(
+                        section_heading=section.section_heading,
+                        section_text=section.text,
+                        page_number=section.page_number,
+                        document_identifier=doc.source_identifier,
+                    )
+                except LLMOutputError as e:
+                    logger.warning(
+                        "Invalid extraction output for section '%s' (page %d) of document %s -> G1: %s",
+                        section.section_heading, section.page_number, doc.id, e,
+                    )
+                    extraction_issues.append({
+                        "section": section.section_heading,
+                        "page": section.page_number,
+                        "reason": str(e)[:500],
+                    })
+                    continue
 
                 for rec in extraction_resp.recommendations:
                     # 5. Source verification: ensure exact quotation exists in the source section
@@ -202,7 +217,13 @@ class ExtractionAgent:
                     created_records.append(change)
 
             # 9. Update document lifecycle state
-            if any(c.status == ChangeStatus.HELD_FOR_G1.value for c in created_records) or not created_records:
+            if extraction_issues:
+                doc.doc_metadata = {**(doc.doc_metadata or {}), "extraction_issues": extraction_issues}
+            if (
+                any(c.status == ChangeStatus.HELD_FOR_G1.value for c in created_records)
+                or not created_records
+                or extraction_issues
+            ):
                 if not created_records:
                     logger.warning(
                         "Document %s held for G1: no recommendation extracted from %d section(s) / %d candidate(s).",

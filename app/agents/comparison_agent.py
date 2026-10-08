@@ -15,6 +15,15 @@ from app.services.config_service import AppConfig, load_config
 from app.services.llm_client import SharedLLMClient
 from app.services.protocol_index import ProtocolIndexService
 
+_GAP_EVIDENCE_FIELDS = (
+    "matched_section_id",
+    "matched_section_heading",
+    "exact_protocol_text",
+    "specific_difference",
+    "comparison_rationale",
+    "review_reason",
+)
+
 logger = logging.getLogger("ckea.comparison")
 
 
@@ -112,6 +121,12 @@ class ComparisonAgent:
                     matched_protocol_version=None,
                     is_match=False,
                     status=GapStatus.NO_MATCH.value,
+                    details={
+                        "review_reason": (
+                            f"No protocol section reached similarity threshold {threshold:.2f} "
+                            f"(top similarity {top_similarity:.2f})."
+                        ),
+                    },
                 )
                 session.commit()
                 session.refresh(gap)
@@ -145,8 +160,10 @@ class ComparisonAgent:
                     candidate_section_id=best_candidate.section_id,
                     evidence_grade=change.evidence_grade,
                 )
-            except Exception as e:
-                logger.warning("Groq comparison call or parsing failed for ChangeRecord %s: %s", change.id, e)
+            except ValueError as e:
+                # Unparseable / schema-invalid model output (LLMOutputError, ValidationError) -> G2.
+                # Provider outages and missing credentials are not ambiguity: they propagate as failures.
+                logger.warning("Groq comparison output invalid for ChangeRecord %s: %s", change.id, e)
                 invalid_error_reason = f"Model structured output error: {e}"
 
             # 7. Verification & Routing logic
@@ -166,6 +183,11 @@ class ComparisonAgent:
                     matched_protocol_version=best_candidate.protocol_version,
                     is_match=True,
                     status=GapStatus.REVIEW_REQUIRED.value,
+                    details={
+                        "matched_section_id": best_candidate.section_id,
+                        "matched_section_heading": best_candidate.section_heading,
+                        "review_reason": invalid_error_reason,
+                    },
                 )
                 session.commit()
                 session.refresh(gap)
@@ -189,8 +211,8 @@ class ComparisonAgent:
             is_confident = comparison_resp.confidence >= self.config.comparison_confidence_threshold
 
             # 11. State determination
+            reasons: List[str] = []
             if not quote_verified or not is_consistent or not is_confident:
-                reasons = []
                 if not quote_verified:
                     reasons.append("Protocol quotation or metadata mismatch")
                 if not is_consistent:
@@ -232,6 +254,15 @@ class ComparisonAgent:
                 matched_protocol_version=best_candidate.protocol_version,
                 is_match=True,
                 status=gap_status,
+                details={
+                    "matched_section_id": best_candidate.section_id,
+                    "matched_section_heading": best_candidate.section_heading,
+                    # An unverified quotation is never stored as protocol text.
+                    "exact_protocol_text": comparison_resp.exact_protocol_text if quote_verified else None,
+                    "specific_difference": comparison_resp.specific_difference,
+                    "comparison_rationale": comparison_resp.rationale,
+                    "review_reason": "; ".join(reasons) or None,
+                },
             )
             session.commit()
             session.refresh(gap)
@@ -258,10 +289,15 @@ class ComparisonAgent:
         matched_protocol_version: Optional[str],
         is_match: bool,
         status: str,
+        details: Optional[dict] = None,
     ) -> GapRecord:
         """Idempotently create or update the single GapRecord for a ChangeRecord."""
+        evidence = {key: None for key in _GAP_EVIDENCE_FIELDS}
+        evidence.update(details or {})
         existing = session.query(GapRecord).filter_by(change_record_id=change_id).first()
         if existing:
+            for key, value in evidence.items():
+                setattr(existing, key, value)
             existing.candidate_protocol_section_ids = candidate_section_ids
             existing.similarity = similarity
             existing.comparison_result = comparison_result
@@ -285,6 +321,7 @@ class ComparisonAgent:
                 is_match=is_match,
                 status=status,
                 schema_version="1.0",
+                **evidence,
             )
             session.add(gap)
             return gap

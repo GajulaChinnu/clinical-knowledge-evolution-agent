@@ -2,14 +2,33 @@
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type, TypeVar
+
+import openai
 from openai import OpenAI
+from pydantic import BaseModel, ValidationError
 
 from app.schemas.comparison import ComparisonResponse
 from app.schemas.extraction import ExtractionResponse
 from app.services.config_service import AppConfig, MissingAPIKeyError, load_config
 
 logger = logging.getLogger("ckea.services.llm_client")
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class LLMOutputError(ValueError):
+    """The model answered, but its output was empty, unparseable or failed schema validation.
+
+    Never retried. Agents route it to human review (Extraction -> G1, Comparison -> G2).
+    """
+
+
+class LLMTransportError(RuntimeError):
+    """The provider could not be reached or kept failing after the SDK's bounded retries.
+
+    Not a clinical judgement: the pipeline records a failure and may retry the document later.
+    """
 
 EXTRACTION_SYSTEM_PROMPT = """You are an expert clinical guideline extraction assistant.
 Analyze the provided clinical guideline section text and extract actionable clinical recommendations.
@@ -48,7 +67,12 @@ Comparison Rules:
 
 
 class SharedLLMClient:
-    """Shared client for executing structured inferences against Groq models."""
+    """Shared client for executing structured inferences against Groq models.
+
+    Transient provider failures (408/409/429/5xx, timeouts, connection errors) are retried by
+    the OpenAI SDK with bounded exponential backoff: `llm_max_retries` retries, i.e.
+    llm_max_retries + 1 attempts in total. Schema failures are never retried.
+    """
 
     def __init__(
         self,
@@ -74,8 +98,78 @@ class SharedLLMClient:
             self._client = OpenAI(
                 api_key=self.config.get_api_key(),
                 base_url=self.base_url,
+                max_retries=self.config.llm_max_retries,
+                timeout=self.config.llm_timeout_seconds,
             )
         return self._client
+
+    def _structured_call(self, schema: Type[T], system_prompt: str, user_prompt: str, task: str) -> T:
+        """Run one schema-constrained completion and validate it application-side.
+
+        Raises:
+            LLMOutputError: Empty, unparseable or schema-invalid output (route to human review).
+            LLMTransportError: Provider unreachable / failing after bounded retries.
+            MissingAPIKeyError: GROQ_API_KEY not configured.
+        """
+        start_time = time.perf_counter()
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": schema.__name__,
+                        "strict": True,
+                        "schema": schema.model_json_schema(),
+                    },
+                },
+                temperature=0.0,
+            )
+        except openai.BadRequestError as e:
+            # Groq reports schema-constrained generation failures as 400 (e.g. json_validate_failed).
+            logger.error("Groq %s rejected structured output: %s", task, type(e).__name__)
+            raise LLMOutputError(f"Model structured output rejected by provider: {e}") from e
+        except (openai.APIConnectionError, openai.APITimeoutError, openai.RateLimitError, openai.InternalServerError) as e:
+            logger.error("Groq %s failed after retries: %s", task, type(e).__name__)
+            raise LLMTransportError(f"LLM provider unavailable during {task}: {type(e).__name__}") from e
+        except openai.APIStatusError as e:
+            logger.error("Groq %s failed with HTTP %s", task, e.status_code)
+            raise LLMTransportError(f"LLM provider error during {task}: HTTP {e.status_code}") from e
+
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        self.request_count += 1
+
+        usage = completion.usage
+        self.last_usage = {
+            "model": self.model,
+            "prompt_tokens": usage.prompt_tokens if usage else None,
+            "completion_tokens": usage.completion_tokens if usage else None,
+            "total_tokens": usage.total_tokens if usage else None,
+            "request_count": self.request_count,
+            "latency_ms": latency_ms,
+        }
+        logger.info(
+            "Groq %s completed: model=%s, prompt_tokens=%s, completion_tokens=%s, latency_ms=%.1f",
+            task,
+            self.model,
+            self.last_usage["prompt_tokens"],
+            self.last_usage["completion_tokens"],
+            latency_ms,
+        )
+
+        # Application-side validation (never trust provider output blindly)
+        raw_content = completion.choices[0].message.content
+        if not raw_content:
+            raise LLMOutputError(f"Model returned empty or null {task} content.")
+        try:
+            return schema.model_validate_json(raw_content)
+        except ValidationError as e:
+            logger.error("Groq %s output failed schema validation: %d error(s)", task, e.error_count())
+            raise LLMOutputError(f"Model {task} output failed schema validation: {e}") from e
 
     def extract_recommendations(
         self,
@@ -104,64 +198,7 @@ class SharedLLMClient:
             f"--- SECTION TEXT END ---\n\n"
             "Extract all discrete clinical recommendations present in the section above."
         )
-
-        start_time = time.perf_counter()
-        try:
-            # Use Groq structured JSON schema output supported by openai/gpt-oss-20b
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ExtractionResponse",
-                        "strict": True,
-                        "schema": ExtractionResponse.model_json_schema(),
-                    },
-                },
-                temperature=0.0,
-            )
-
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            self.request_count += 1
-
-            # Observability: record usage metadata safely
-            usage = completion.usage
-            prompt_tokens = usage.prompt_tokens if usage else None
-            completion_tokens = usage.completion_tokens if usage else None
-            total_tokens = usage.total_tokens if usage else None
-
-            self.last_usage = {
-                "model": self.model,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-                "request_count": self.request_count,
-                "latency_ms": latency_ms,
-            }
-
-            logger.info(
-                "Groq extraction completed: model=%s, prompt_tokens=%s, completion_tokens=%s, latency_ms=%.1f",
-                self.model,
-                prompt_tokens,
-                completion_tokens,
-                latency_ms,
-            )
-
-            # Application-side Pydantic validation (never trust provider output blindly)
-            raw_content = completion.choices[0].message.content
-            if not raw_content:
-                raise ValueError("Model returned empty or null content.")
-
-            response = ExtractionResponse.model_validate_json(raw_content)
-            return response
-
-        except Exception as e:
-            logger.error("Groq extraction failed: %s: %s", type(e).__name__, str(e))
-            raise
+        return self._structured_call(ExtractionResponse, EXTRACTION_SYSTEM_PROMPT, user_prompt, "extraction")
 
     def compare_recommendation_to_protocol(
         self,
@@ -205,61 +242,7 @@ class SharedLLMClient:
             f"Section Text:\n{candidate_section_text}\n\n"
             "Compare the extracted recommendation to the candidate protocol section and output structured comparison JSON."
         )
-
-        start_time = time.perf_counter()
-        try:
-            completion = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": COMPARISON_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ComparisonResponse",
-                        "strict": True,
-                        "schema": ComparisonResponse.model_json_schema(),
-                    },
-                },
-                temperature=0.0,
-            )
-
-            latency_ms = (time.perf_counter() - start_time) * 1000
-            self.request_count += 1
-
-            usage = completion.usage
-            prompt_tokens = usage.prompt_tokens if usage else None
-            completion_tokens = usage.completion_tokens if usage else None
-            total_tokens = usage.total_tokens if usage else None
-
-            self.last_usage = {
-                "model": self.model,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-                "request_count": self.request_count,
-                "latency_ms": latency_ms,
-            }
-
-            logger.info(
-                "Groq comparison completed: model=%s, prompt_tokens=%s, completion_tokens=%s, latency_ms=%.1f",
-                self.model,
-                prompt_tokens,
-                completion_tokens,
-                latency_ms,
-            )
-
-            raw_content = completion.choices[0].message.content
-            if not raw_content:
-                raise ValueError("Model returned empty or null comparison content.")
-
-            response = ComparisonResponse.model_validate_json(raw_content)
-            return response
-
-        except Exception as e:
-            logger.error("Groq comparison failed: %s: %s", type(e).__name__, str(e))
-            raise
+        return self._structured_call(ComparisonResponse, COMPARISON_SYSTEM_PROMPT, user_prompt, "comparison")
 
     def __repr__(self) -> str:
         return f"SharedLLMClient(model='{self.model}', base_url='{self.base_url}')"

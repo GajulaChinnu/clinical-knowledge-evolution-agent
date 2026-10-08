@@ -77,7 +77,9 @@ from app.services.evaluation_corpus import (
 )
 from app.services.evaluation_reporter import EvaluationReporter
 from app.services.file_hash import compute_sha256
-from app.services.llm_client import SharedLLMClient
+from app.schemas.governance import GovernanceGateError
+from app.schemas.transitions import InvalidStateTransitionError
+from app.services.llm_client import LLMOutputError, SharedLLMClient
 from app.services.protocol_index import ProtocolIndexService, parse_protocol_file
 from app.services.scoring_engine import ScoringEngine, TierDowngradeBlockedError, UnresolvedComparisonError
 from app.services.source_verifier import verify_recommendation_provenance
@@ -440,7 +442,7 @@ class EvaluationRunner:
                     ]
 
                     if sc["condition_type"] == "invalid":
-                        mock_llm.compare_recommendation_to_protocol.side_effect = RuntimeError("Malformed JSON")
+                        mock_llm.compare_recommendation_to_protocol.side_effect = LLMOutputError("Malformed JSON")
                     elif sc["condition_type"] == "contradiction":
                         # Inconsistent output
                         mock_llm.compare_recommendation_to_protocol.return_value = ComparisonResponse(
@@ -1090,19 +1092,28 @@ class EvaluationRunner:
 
         # Verify brief CANNOT be closed without explicit human decision
         auto_close_blocked = False
+        # Both paths must be refused by the governance gate itself; any other error
+        # (e.g. a wrong method name) is a real failure, never counted as "blocked".
+        decision_refused = False
+        try:
+            gov_agent.decide(
+                change_brief_id=brief_id,
+                reviewer_id="system_daemon",
+                decision=ReviewDecision.APPROVE,
+                rationale="Automated test system attempt",
+            )
+        except GovernanceGateError:
+            decision_refused = True
+
+        closure_refused = False
+        try:
+            gov_agent.close_after_decision(change_brief_id=brief_id, actor="system_daemon")
+        except (GovernanceGateError, InvalidStateTransitionError):
+            closure_refused = True
+
         with sf() as session:
-            b = session.get(ChangeBrief, brief_id)
-            try:
-                gov_agent.record_decision(
-                    brief_id=brief_id,
-                    reviewer_id="system_daemon",
-                    decision_request=GovernanceDecisionRequest(
-                        decision=ReviewDecision.APPROVE,
-                        rationale="Automated test system attempt",
-                    ),
-                )
-            except Exception:
-                auto_close_blocked = True
+            still_open = session.get(ChangeBrief, brief_id).status == BriefStatus.ASSIGNED.value
+        auto_close_blocked = decision_refused and closure_refused and still_open
 
         engine.dispose()
 

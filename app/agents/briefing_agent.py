@@ -36,7 +36,7 @@ from app.schemas.gaps import ComparisonResult, DifferenceType
 from app.schemas.impact import ImpactStatus
 from app.services.brief_renderer import BriefRenderer, RenderedBriefResult
 from app.services.config_service import AppConfig, load_config
-from app.services.protocol_index import parse_protocol_file
+from app.services.protocol_index import ProtocolError, parse_protocol_file
 
 logger = logging.getLogger("ckea.agents.briefing_agent")
 
@@ -137,25 +137,35 @@ class BriefingAgent:
 
             # 4. Assemble Section 2: What our protocol currently says
             is_match = bool(gap.is_match and gap.comparison_result != ComparisonResult.NO_MATCH.value)
-            resolved_protocol_text = exact_protocol_text
+            resolved_protocol_text = exact_protocol_text or gap.exact_protocol_text
+            section_id = gap.matched_section_id or (
+                gap.candidate_protocol_section_ids[0].split("__")[-1]
+                if gap.candidate_protocol_section_ids else None
+            )
+            section_heading = gap.matched_section_heading
 
-            if is_match and not resolved_protocol_text:
-                resolved_protocol_text = self._resolve_protocol_text(
+            if is_match and (not resolved_protocol_text or not section_heading):
+                sec = self._resolve_protocol_section(
                     protocol_id=gap.matched_protocol_id,
                     protocol_version=gap.matched_protocol_version,
-                    candidate_section_ids=gap.candidate_protocol_section_ids,
+                    section_id=section_id,
                 )
+                if sec is not None:
+                    resolved_protocol_text = resolved_protocol_text or sec.section_text
+                    section_heading = section_heading or sec.section_heading
+                if not resolved_protocol_text:
+                    raise BriefingError(
+                        f"Exact protocol text for {gap.matched_protocol_id} version "
+                        f"{gap.matched_protocol_version} section {section_id} could not be resolved. "
+                        "The brief was not generated rather than show invented or substituted protocol content."
+                    )
 
             current_protocol = ProtocolSectionPayload(
                 is_match=is_match,
                 protocol_id=gap.matched_protocol_id if is_match else None,
                 protocol_version=gap.matched_protocol_version if is_match else None,
-                section_id=(
-                    gap.candidate_protocol_section_ids[0].split("__")[-1]
-                    if gap.candidate_protocol_section_ids and len(gap.candidate_protocol_section_ids) > 0
-                    else "SEC-1"
-                ) if is_match else None,
-                section_heading="Institutional Clinical Protocol" if is_match else None,
+                section_id=section_id if is_match else None,
+                section_heading=(section_heading or f"Section {section_id}") if is_match else None,
                 exact_protocol_text=resolved_protocol_text if is_match else None,
                 no_match_statement=(
                     "No matching protocol section was identified in the current institutional protocol library."
@@ -164,7 +174,7 @@ class BriefingAgent:
             )
 
             # 5. Assemble Section 3: Specific difference
-            resolved_difference = specific_difference
+            resolved_difference = specific_difference or gap.specific_difference
             if not resolved_difference:
                 if is_match:
                     diff_type_readable = (gap.difference_type or "difference").replace("_", " ")
@@ -339,34 +349,33 @@ class BriefingAgent:
             session.expunge(brief_entity)
             return brief_entity
 
-    def _resolve_protocol_text(
+    def _resolve_protocol_section(
         self,
         protocol_id: Optional[str],
         protocol_version: Optional[str],
-        candidate_section_ids: Optional[List[str]],
-    ) -> str:
-        """Attempt to resolve verbatim protocol text from indexed files or candidate ID."""
-        if not protocol_id:
-            return "Institutional clinical protocol content on file."
+        section_id: Optional[str],
+    ):
+        """Resolve the exact protocol section (same id, same version, same section) from protocol files.
 
-        # Attempt to inspect local protocol directory
+        Returns None when it cannot be resolved exactly. Never substitutes another version,
+        another section, or placeholder text.
+        """
+        if not (protocol_id and protocol_version and section_id):
+            return None
         protocol_dir = self.config.protocol_dir
-        if protocol_dir.exists():
-            for p_file in protocol_dir.iterdir():
-                if p_file.is_file() and p_file.suffix.lower() in [".json", ".md", ".txt"]:
-                    try:
-                        p_doc = parse_protocol_file(p_file)
-                        if p_doc.protocol_id == protocol_id:
-                            # Match section if possible
-                            target_sec_id = None
-                            if candidate_section_ids and len(candidate_section_ids) > 0:
-                                target_sec_id = candidate_section_ids[0].split("__")[-1]
-                            for sec in p_doc.sections:
-                                if target_sec_id and sec.section_id == target_sec_id:
-                                    return sec.section_text
-                            if len(p_doc.sections) > 0:
-                                return p_doc.sections[0].section_text
-                    except Exception:
-                        continue
-
-        return f"Protocol {protocol_id} (version {protocol_version or '1.0'}) institutional text on file."
+        if not protocol_dir.exists():
+            return None
+        for p_file in sorted(protocol_dir.iterdir()):
+            if not (p_file.is_file() and p_file.suffix.lower() in (".json", ".md", ".txt")):
+                continue
+            try:
+                p_doc = parse_protocol_file(p_file)
+            except ProtocolError as e:
+                logger.warning("Protocol file %s could not be parsed: %s", p_file.name, e)
+                continue
+            if p_doc.protocol_id != protocol_id or p_doc.protocol_version != protocol_version:
+                continue
+            for sec in p_doc.sections:
+                if sec.section_id == section_id:
+                    return sec
+        return None

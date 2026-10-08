@@ -918,3 +918,67 @@ def test_all_difference_types_consistent_across_schema_and_prompt():
     for dt_val in expected_types:
         assert f"'{dt_val}'" in COMPARISON_SYSTEM_PROMPT
 
+
+
+def test_provider_outage_is_not_routed_to_g2(comparison_env):
+    """A provider outage is not clinical ambiguity: it propagates as a failure, the change stays retryable."""
+    from app.services.llm_client import LLMTransportError
+
+    session_factory = comparison_env["session_factory"]
+    change_id = _create_sample_change_record(
+        session_factory=session_factory,
+        verbatim_text="Start metformin 500mg once daily with evening meals for non-pregnant adults.",
+    )
+    mock_llm = MagicMock(spec=SharedLLMClient)
+    mock_llm.compare_recommendation_to_protocol.side_effect = LLMTransportError("LLM provider unavailable")
+
+    agent = ComparisonAgent(session_factory=session_factory, protocol_index_service=comparison_env["protocol_service"],
+                            llm_client=mock_llm, config=comparison_env["config"])
+    with pytest.raises(LLMTransportError):
+        agent.process_change_record(change_id)
+
+    with session_factory() as session:
+        change = session.get(ChangeRecord, change_id)
+        assert change.status != ChangeStatus.HELD_FOR_G2.value
+        assert session.query(GapRecord).filter_by(change_record_id=change_id).count() == 0
+
+
+def _compare_with(comparison_env, exact_protocol_text, confidence=0.92):
+    session_factory = comparison_env["session_factory"]
+    change_id = _create_sample_change_record(
+        session_factory=session_factory,
+        verbatim_text="Start metformin 500mg once daily with evening meals for non-pregnant adults.",
+    )
+    mock_llm = MagicMock(spec=SharedLLMClient)
+    mock_llm.compare_recommendation_to_protocol.return_value = ComparisonResponse(
+        comparison_result=ComparisonResult.GAP,
+        matched_protocol_section="Metformin Monotherapy Starting Dose",
+        protocol_id="PROT-DM-001",
+        protocol_version="1.0",
+        section_id="SEC-2",
+        exact_protocol_text=exact_protocol_text,
+        specific_difference="Guideline doubles the starting dose.",
+        difference_type=DifferenceType.DOSAGE_CHANGE,
+        confidence=confidence,
+        rationale="Dose differs.",
+    )
+    agent = ComparisonAgent(session_factory=session_factory, protocol_index_service=comparison_env["protocol_service"],
+                            llm_client=mock_llm, config=comparison_env["config"])
+    return agent.process_change_record(change_id)
+
+
+def test_verified_comparison_evidence_is_persisted(comparison_env):
+    gap = _compare_with(comparison_env, "Start metformin 500mg once daily with evening meals for non-pregnant adults.")
+    assert gap.exact_protocol_text == "Start metformin 500mg once daily with evening meals for non-pregnant adults."
+    assert gap.matched_section_id == "SEC-2"
+    assert gap.matched_section_heading
+    assert gap.specific_difference == "Guideline doubles the starting dose."
+    assert gap.comparison_rationale == "Dose differs."
+    assert gap.review_reason is None
+
+
+def test_unverified_quotation_is_never_stored_as_protocol_text(comparison_env):
+    gap = _compare_with(comparison_env, "Start metformin 2000mg twice daily for everyone.")
+    assert gap.status == GapStatus.REVIEW_REQUIRED.value
+    assert gap.exact_protocol_text is None
+    assert "quotation" in gap.review_reason.lower()

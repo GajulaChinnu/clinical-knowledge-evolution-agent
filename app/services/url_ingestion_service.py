@@ -145,7 +145,7 @@ def validate_source_url(url: str) -> urllib.parse.ParseResult:
 
     try:
         parsed = urllib.parse.urlparse(clean_url)
-    except Exception as e:
+    except ValueError as e:
         raise InvalidURLError(f"Malformed URL '{clean_url}': {e}")
 
     scheme = parsed.scheme.lower()

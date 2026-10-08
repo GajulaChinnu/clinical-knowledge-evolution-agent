@@ -263,7 +263,7 @@ def resolve_protocol_section_details(
                                 "status_message": "Matched institutional protocol section on file.",
                             }
                 except Exception as e:
-                    logger.debug("Protocol resolution error for %s: %s", p_file.name, e)
+                    logger.warning("Protocol file %s could not be parsed: %s", p_file.name, e)
 
     return {
         "is_match": True,
@@ -985,10 +985,7 @@ def render_processing_chain(
     if eff_gate:
         chain_md += f"  \n\n*Held at:* {render_badge(eff_gate)}"
 
-    try:
-        st.markdown(chain_md)
-    except Exception:
-        pass
+    st.markdown(chain_md)
     return chain_md
 
 

@@ -783,3 +783,72 @@ def test_missing_workflow_information_handled_without_fabrication(briefing_env):
 
     md_content = Path(brief.rendered_file_path).read_text(encoding="utf-8")
     assert "Clinical workflow mapping not available in source guideline metadata" in md_content
+
+
+# ==============================================================================
+# NO INVENTED OR SUBSTITUTED PROTOCOL CONTENT
+# ==============================================================================
+
+def _set_gap_evidence(session_factory, impact_id, **fields):
+    with session_factory() as session:
+        impact = session.get(ImpactRecord, impact_id)
+        gap = session.get(GapRecord, impact.gap_record_id)
+        for key, value in fields.items():
+            setattr(gap, key, value)
+        session.commit()
+
+
+def test_brief_uses_verified_comparison_evidence_from_gap(briefing_env):
+    sf = briefing_env["session_factory"]
+    impact_id = _create_full_pipeline_records(sf)
+    _set_gap_evidence(
+        sf, impact_id,
+        matched_section_id="SEC-3",
+        matched_section_heading="Cardiorenal Therapy",
+        exact_protocol_text="SGLT2 inhibitors are reserved for eGFR ≥ 45 mL/min.",
+        specific_difference="Guideline extends SGLT2 initiation to eGFR ≥ 20.",
+    )
+    brief = briefing_env["agent"].process_impact_record(impact_id)
+    current = brief.structured_payload["current_protocol"]
+    assert current["exact_protocol_text"] == "SGLT2 inhibitors are reserved for eGFR ≥ 45 mL/min."
+    assert current["section_id"] == "SEC-3"
+    assert current["section_heading"] == "Cardiorenal Therapy"
+    assert brief.structured_payload["specific_difference"]["specific_difference"] == "Guideline extends SGLT2 initiation to eGFR ≥ 20."
+
+
+def test_unresolvable_protocol_text_is_refused_not_invented(briefing_env):
+    """No stored quote and no exact protocol/version/section on file -> no brief, no placeholder."""
+    from app.agents.briefing_agent import BriefingError
+
+    sf = briefing_env["session_factory"]
+    # PROT-DM-001 exists on disk only as version "v1.0"; "9.9" must not fall back to it.
+    impact_id = _create_full_pipeline_records(sf, matched_protocol_version="9.9")
+    with pytest.raises(BriefingError, match="could not be resolved"):
+        briefing_env["agent"].process_impact_record(impact_id)
+    with sf() as session:
+        assert session.query(ChangeBrief).count() == 0
+
+
+def test_protocol_text_resolved_only_from_exact_version_and_section(briefing_env, tmp_path):
+    import json
+    from dataclasses import replace
+
+    proto_dir = tmp_path / "protocols"
+    proto_dir.mkdir()
+    for version, text in (("v1.0", "OLD VERSION TEXT for SEC-3."), ("v2.0", "CURRENT v2 TEXT for SEC-3.")):
+        (proto_dir / f"PROT-X_{version}.json").write_text(json.dumps({
+            "protocol_id": "PROT-X", "protocol_version": version, "title": "X",
+            "sections": [
+                {"section_id": "SEC-1", "section_heading": "Other", "section_text": f"Unrelated {version} text."},
+                {"section_id": "SEC-3", "section_heading": "Target", "section_text": text},
+            ],
+        }), encoding="utf-8")
+    agent = briefing_env["agent"]
+    agent.config = agent.config.model_copy(update={"protocol_dir": proto_dir})
+
+    sf = briefing_env["session_factory"]
+    impact_id = _create_full_pipeline_records(sf, matched_protocol_id="PROT-X", matched_protocol_version="v2.0")
+    current = agent.process_impact_record(impact_id).structured_payload["current_protocol"]
+    assert current["exact_protocol_text"] == "CURRENT v2 TEXT for SEC-3."
+    assert current["section_heading"] == "Target"
+    assert current["protocol_version"] == "v2.0"

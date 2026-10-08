@@ -26,7 +26,7 @@ def _set_sqlite_pragma(dbapi_connection, connection_record) -> None:
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("PRAGMA foreign_keys=ON")
-    except Exception:
+    except Exception:  # Non-SQLite DBAPI drivers reject PRAGMA; foreign keys are then enforced natively.
         pass
     finally:
         cursor.close()
@@ -88,7 +88,7 @@ def apply_migrations(engine: Engine) -> None:
     if not inspector.has_table("ingested_documents"):
         return
     columns = [col["name"] for col in inspector.get_columns("ingested_documents")]
-    
+
     with engine.begin() as conn:
         if "previous_source_version_id" not in columns:
             conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_source_version_id VARCHAR(36)"))
@@ -96,6 +96,19 @@ def apply_migrations(engine: Engine) -> None:
             conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN previous_sha256_hash VARCHAR(64)"))
         if "change_status" not in columns:
             conn.execute(text("ALTER TABLE ingested_documents ADD COLUMN change_status VARCHAR(32) DEFAULT 'first_seen'"))
+
+        if inspector.has_table("gap_records"):
+            gap_columns = {col["name"] for col in inspector.get_columns("gap_records")}
+            for name, ddl in (
+                ("matched_section_id", "VARCHAR(128)"),
+                ("matched_section_heading", "VARCHAR(512)"),
+                ("exact_protocol_text", "TEXT"),
+                ("specific_difference", "TEXT"),
+                ("comparison_rationale", "TEXT"),
+                ("review_reason", "TEXT"),
+            ):
+                if name not in gap_columns:
+                    conn.execute(text(f"ALTER TABLE gap_records ADD COLUMN {name} {ddl}"))
 
 def init_db(engine: Optional[Engine] = None, db_url: Optional[str] = None) -> Engine:
     """Explicitly initialize the database schema by creating all registered tables.

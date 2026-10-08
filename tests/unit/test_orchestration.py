@@ -648,6 +648,9 @@ def test_resume_after_g2_confirm_gap(orchestration_env):
             difference_type=DifferenceType.INTERVENTION_CHANGE.value,
             matched_protocol_id="PROT-DM-001",
             matched_protocol_version="1.0",
+            matched_section_id="4.1",
+            matched_section_heading="Metformin Monotherapy",
+            exact_protocol_text="Metformin is the preferred initial pharmacologic agent for type 2 diabetes.",
             status=GapStatus.REVIEW_REQUIRED.value,
         )
         session.add(gap)
@@ -819,6 +822,9 @@ def test_partial_pipeline_recovery(orchestration_env):
             difference_type=DifferenceType.INTERVENTION_CHANGE.value,
             matched_protocol_id="PROT-DM-001",
             matched_protocol_version="1.0",
+            matched_section_id="4.1",
+            matched_section_heading="Metformin Monotherapy",
+            exact_protocol_text="Metformin is the preferred initial pharmacologic agent for type 2 diabetes.",
             status=GapStatus.MATCHED.value,
         )
         session.add(gap)
